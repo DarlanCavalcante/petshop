@@ -1,0 +1,53 @@
+# Python
+api/venv/
+api/__pycache__/
+api/**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# Node.js / Next.js
+web/node_modules/
+web/.next/
+web/out/
+web/.env.local
+web/.env.development.local
+web/.env.test.local
+web/.env.production.local
+
+# Logs e PIDs
+.pids/
+*.log
+
+# Environment files
+.env
+api/.env
+!api/.env.example
+!.env.example
+
+# Database
+databases.json
+!databases.example.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Backup files
+*.bak
+*.tmp
+*.backup
