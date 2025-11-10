@@ -1,6 +1,8 @@
 ## Petshop – Sistema Multi-Empresa (FastAPI + Next.js)
 
-Aplicação completa para Petshop com suporte multi-empresa (um banco por empresa). Backend em FastAPI + MySQL com autenticação JWT, vendas via procedure transacional, agendamentos de serviços e KPIs expostas por views. Frontend em Next.js com páginas: Login, Produtos, Vendas, Agendamentos e KPIs.
+Aplicação completa para Petshop com suporte multi-empresa usando **estratégia de banco separado por empresa** (separate-database). Backend em FastAPI + MySQL com autenticação JWT, vendas via procedure transacional, agendamentos de serviços e KPIs expostas por views. Frontend em Next.js com páginas: Login, Produtos, Vendas, Agendamentos e KPIs.
+
+**Arquitetura:** Cada empresa possui seu próprio banco MySQL físico, mapeado via `databases.json` e selecionado dinamicamente pelo header `X-Empresa` ou campo `empresa` no JWT.
 
 Scripts rápidos:
 - Subir tudo: `./start_all.sh`
