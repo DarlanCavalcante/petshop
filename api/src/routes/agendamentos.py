@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from typing import List
 
 from src.database import get_db
@@ -11,7 +12,7 @@ router = APIRouter(prefix="/agendamentos", tags=["Agendamentos"])
 @router.post("", response_model=dict, status_code=status.HTTP_201_CREATED)
 def criar_agendamento(agendamento: AgendamentoCreate, db: Session = Depends(get_db), current_user: int = Depends(get_current_user_id)):
     """Cria agendamento usando procedure agendar_servico"""
-    query = """
+    query = text("""
         CALL agendar_servico(
             :id_pet,
             :id_servico,
@@ -21,7 +22,7 @@ def criar_agendamento(agendamento: AgendamentoCreate, db: Session = Depends(get_
             :observacoes,
             @p_id_agendamento
         )
-    """
+    """)
     
     try:
         db.execute(query, {
@@ -33,7 +34,7 @@ def criar_agendamento(agendamento: AgendamentoCreate, db: Session = Depends(get_
             "observacoes": agendamento.observacoes
         })
         
-        result = db.execute("SELECT @p_id_agendamento AS id_agendamento").fetchone()
+        result = db.execute(text("SELECT @p_id_agendamento AS id_agendamento")).fetchone()
         db.commit()
         
         return {
@@ -67,12 +68,12 @@ def listar_agendamentos(
     
     where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
     
-    query = f"""
+    query = text(f"""
         SELECT * FROM agendamentos
         WHERE {where_sql}
         ORDER BY data_hora DESC
         LIMIT :limit OFFSET :skip
-    """
+    """)
     
     result = db.execute(query, params).fetchall()
     return [dict(row._mapping) for row in result]
@@ -80,7 +81,7 @@ def listar_agendamentos(
 @router.get("/hoje", response_model=List[dict])
 def agendamentos_hoje(db: Session = Depends(get_db), current_user: int = Depends(get_current_user_id)):
     """Usa a view vw_agendamentos_hoje"""
-    query = "SELECT * FROM vw_agendamentos_hoje"
+    query = text("SELECT * FROM vw_agendamentos_hoje")
     result = db.execute(query).fetchall()
     return [dict(row._mapping) for row in result]
 
@@ -96,7 +97,7 @@ def atualizar_status_agendamento(
     if novo_status not in valid_status:
         raise HTTPException(status_code=400, detail=f"Status inválido. Use: {valid_status}")
     
-    query = "UPDATE agendamentos SET status = :status WHERE id_agendamento = :id"
+    query = text("UPDATE agendamentos SET status = :status WHERE id_agendamento = :id")
     try:
         db.execute(query, {"status": novo_status, "id": id_agendamento})
         db.commit()

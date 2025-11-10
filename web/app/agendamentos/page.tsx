@@ -1,14 +1,25 @@
 "use client";
-import { useEffect, useState } from "react";
 
-type Agendamento = { id_agendamento: number; data_hora: string; status: string; pet_nome?: string; cliente_nome?: string; servico_nome?: string; funcionario_nome?: string };
+import { useEffect, useState } from "react";
+import { motion } from 'framer-motion';
+import { Calendar, Clock, User, PawPrint, Briefcase, Plus, CheckCircle, XCircle } from 'lucide-react';
+import { toast, Toaster } from 'react-hot-toast';
+import AppLayout from '@/components/AppLayout';
+import { API_URL } from '@/lib/config';
+
+type Agendamento = { 
+  id_agendamento: number; 
+  data_hora: string; 
+  status: string; 
+  pet_nome?: string; 
+  cliente_nome?: string; 
+  servico_nome?: string; 
+  funcionario_nome?: string;
+  duracao_estimada?: number;
+};
 
 export default function AgendamentosPage() {
-  const [empresa, setEmpresa] = useState<string | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const [lista, setLista] = useState<Agendamento[]>([]);
-
-  // form
   const [clientes, setClientes] = useState<any[]>([]);
   const [pets, setPets] = useState<any[]>([]);
   const [servicos, setServicos] = useState<any[]>([]);
@@ -19,125 +30,349 @@ export default function AgendamentosPage() {
   const [dataHora, setDataHora] = useState<string>("");
   const [duracao, setDuracao] = useState<number>(45);
   const [obs, setObs] = useState<string>("");
-  const [msg, setMsg] = useState<string>("");
-  const [error, setError] = useState<string>("");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const t = localStorage.getItem("token");
-    const e = localStorage.getItem("empresa") || "teste";
-    setToken(t); setEmpresa(e);
-    async function load() {
-      try {
-        const base = "http://127.0.0.1:8000";
-        // me
-        const me = await fetch(`${base}/auth/me`, { headers: { "Authorization": `Bearer ${t}`, "X-Empresa": e }});
-        if (me.ok) { const jj = await me.json(); setIdFuncionario(jj.id); }
-        // hoje
-        const rh = await fetch(`${base}/agendamentos/hoje`, { headers: { "Authorization": `Bearer ${t}`, "X-Empresa": e }});
-        if (rh.ok) setLista(await rh.json());
-        // clientes + serviços
-        const rc = await fetch(`${base}/clientes`, { headers: { "Authorization": `Bearer ${t}`, "X-Empresa": e }});
-        if (rc.ok) setClientes(await rc.json());
-        const rs = await fetch(`${base}/servicos`, { headers: { "Authorization": `Bearer ${t}`, "X-Empresa": e }});
-        if (rs.ok) setServicos(await rs.json());
-      } catch (err: any) { setError(err.message); }
-    }
-    if (t) load();
+    loadData();
   }, []);
 
-  async function onClienteChange(cid: number | null) {
+  const loadData = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const empresa = localStorage.getItem("empresa") || "teste";
+      
+      if (!token) {
+        window.location.href = '/login';
+        return;
+      }
+
+      const headers = {
+        "Authorization": `Bearer ${token}`,
+        "X-Empresa": empresa
+      };
+
+      // Obter funcionário logado
+      const meRes = await fetch(`${API_URL}/auth/me`, { headers, mode: 'cors' });
+      if (meRes.ok) {
+        const userData = await meRes.json();
+        setIdFuncionario(userData.id);
+      }
+
+      // Carregar agendamentos de hoje
+      const agendaRes = await fetch(`${API_URL}/agendamentos/hoje`, { headers, mode: 'cors' });
+      if (agendaRes.ok) {
+        setLista(await agendaRes.json());
+      }
+
+      // Carregar clientes
+      const clientesRes = await fetch(`${API_URL}/clientes`, { headers, mode: 'cors' });
+      if (clientesRes.ok) {
+        setClientes(await clientesRes.json());
+      }
+
+      // Carregar serviços
+      const servicosRes = await fetch(`${API_URL}/servicos`, { headers, mode: 'cors' });
+      if (servicosRes.ok) {
+        setServicos(await servicosRes.json());
+      }
+
+      setLoading(false);
+    } catch (error: any) {
+      console.error('Erro ao carregar dados:', error);
+      toast.error('Erro ao carregar dados');
+      setLoading(false);
+    }
+  };
+
+  const onClienteChange = async (cid: number | null) => {
     setIdCliente(cid);
     setIdPet(null);
-    if (!token || !empresa) return;
-    const base = "http://127.0.0.1:8000";
-    if (!cid) { setPets([]); return; }
-    const rp = await fetch(`${base}/clientes/${cid}/pets`, { headers: { "Authorization": `Bearer ${token}`, "X-Empresa": empresa }});
-    if (rp.ok) setPets(await rp.json());
-  }
+    setPets([]);
+    
+    if (!cid) return;
 
-  async function criarAgendamento() {
-    setMsg(""); setError("");
     try {
-      if (!token || !empresa) throw new Error("Faça login");
-      if (!idCliente || !idPet || !idServico || !idFuncionario || !dataHora) throw new Error("Preencha os campos");
+      const token = localStorage.getItem("token");
+      const empresa = localStorage.getItem("empresa") || "teste";
+      
+      const petsRes = await fetch(`${API_URL}/clientes/${cid}/pets`, {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "X-Empresa": empresa
+        },
+        mode: 'cors'
+      });
+      
+      if (petsRes.ok) {
+        setPets(await petsRes.json());
+      }
+    } catch (error) {
+      console.error('Erro ao carregar pets:', error);
+    }
+  };
+
+  const criarAgendamento = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const empresa = localStorage.getItem("empresa") || "teste";
+      
+      if (!token) throw new Error("Faça login");
+      if (!idCliente || !idPet || !idServico || !idFuncionario || !dataHora) {
+        toast.error("Preencha todos os campos obrigatórios");
+        return;
+      }
+
       const payload = {
         id_pet: idPet,
         id_servico: idServico,
         id_funcionario: idFuncionario,
-        data_hora: dataHora.replace("T", " ")+":00",
+        data_hora: dataHora.replace("T", " ") + ":00",
         duracao_estimada: duracao,
         observacoes: obs
       };
-      const res = await fetch("http://127.0.0.1:8000/agendamentos", {
+
+      const res = await fetch(`${API_URL}/agendamentos`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}`, "X-Empresa": empresa },
-        body: JSON.stringify(payload)
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+          "X-Empresa": empresa
+        },
+        body: JSON.stringify(payload),
+        mode: 'cors'
       });
+
       if (!res.ok) throw new Error(await res.text());
-      const j = await res.json();
-      setMsg(`Agendamento #${j.id_agendamento} criado`);
-      // refresh lista de hoje
-      const rh = await fetch(`http://127.0.0.1:8000/agendamentos/hoje`, { headers: { "Authorization": `Bearer ${token}`, "X-Empresa": empresa }});
-      if (rh.ok) setLista(await rh.json());
-    } catch (err: any) { setError(err.message); }
+      
+      const result = await res.json();
+      toast.success(`Agendamento #${result.id_agendamento} criado com sucesso!`);
+      
+      // Limpar formulário
+      setIdCliente(null);
+      setIdPet(null);
+      setIdServico(null);
+      setDataHora("");
+      setDuracao(45);
+      setObs("");
+      setPets([]);
+      
+      // Recarregar lista
+      loadData();
+    } catch (error: any) {
+      toast.error(error.message || 'Erro ao criar agendamento');
+    }
+  };
+
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center h-full">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+            className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full"
+          />
+        </div>
+      </AppLayout>
+    );
   }
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
-      <h1 className="text-2xl font-semibold mb-4">Agendamentos</h1>
+    <AppLayout>
+      <Toaster position="top-right" />
+      <div className="space-y-6">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Agendamentos</h1>
+          <p className="text-gray-600 dark:text-gray-400">Gerencie os agendamentos do dia</p>
+        </motion.div>
 
-      <h2 className="font-medium mb-2">Criar</h2>
-      <div className="grid md:grid-cols-2 gap-4 border rounded p-4 mb-8">
-        <div>
-          <label className="block text-sm">Cliente</label>
-          <select className="border p-2 rounded w-full" value={idCliente ?? ''} onChange={e => onClienteChange(Number(e.target.value) || null)}>
-            <option value="">Selecione...</option>
-            {clientes.map(c => <option key={c.id_cliente} value={c.id_cliente}>{c.nome}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm">Pet</label>
-          <select className="border p-2 rounded w-full" value={idPet ?? ''} onChange={e => setIdPet(Number(e.target.value) || null)}>
-            <option value="">Selecione...</option>
-            {pets.map(p => <option key={p.id_pet} value={p.id_pet}>{p.nome}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm">Serviço</label>
-          <select className="border p-2 rounded w-full" value={idServico ?? ''} onChange={e => setIdServico(Number(e.target.value) || null)}>
-            <option value="">Selecione...</option>
-            {servicos.map(s => <option key={s.id_servico} value={s.id_servico}>{s.nome}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm">Data e hora</label>
-          <input type="datetime-local" className="border p-2 rounded w-full" value={dataHora} onChange={e => setDataHora(e.target.value)} />
-        </div>
-        <div>
-          <label className="block text-sm">Duração (min)</label>
-          <input type="number" className="border p-2 rounded w-full" value={duracao} onChange={e => setDuracao(Number(e.target.value))} />
-        </div>
-        <div>
-          <label className="block text-sm">Observações</label>
-          <input className="border p-2 rounded w-full" value={obs} onChange={e => setObs(e.target.value)} />
-        </div>
-        <div className="md:col-span-2">
-          <button className="bg-blue-600 text-white rounded px-4 py-2" onClick={criarAgendamento}>Criar agendamento</button>
-          {msg && <p className="mt-2 text-green-700">{msg}</p>}
-          {error && <p className="mt-2 text-red-600">{error}</p>}
-        </div>
-      </div>
+        {/* Formulário de Criação */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6"
+        >
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <Plus className="w-5 h-5" />
+            Novo Agendamento
+          </h2>
 
-      <h2 className="font-medium mb-2">Hoje</h2>
-      <div className="border rounded divide-y">
-        {lista.map(a => (
-          <div key={a.id_agendamento} className="p-3">
-            <div className="font-medium">{a.servico_nome || 'Serviço'} • {a.pet_nome || 'Pet'} • {a.cliente_nome || ''}</div>
-            <div className="text-sm text-gray-600">{new Date(a.data_hora).toLocaleString()} — {a.status}</div>
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <User className="w-4 h-4 inline mr-1" />
+                Cliente *
+              </label>
+              <select
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                value={idCliente ?? ''}
+                onChange={e => onClienteChange(Number(e.target.value) || null)}
+              >
+                <option value="">Selecione um cliente...</option>
+                {clientes.map(c => (
+                  <option key={c.id_cliente} value={c.id_cliente}>{c.nome}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <PawPrint className="w-4 h-4 inline mr-1" />
+                Pet *
+              </label>
+              <select
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                value={idPet ?? ''}
+                onChange={e => setIdPet(Number(e.target.value) || null)}
+                disabled={!idCliente}
+              >
+                <option value="">Selecione um pet...</option>
+                {pets.map(p => (
+                  <option key={p.id_pet} value={p.id_pet}>{p.nome} ({p.especie})</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <Briefcase className="w-4 h-4 inline mr-1" />
+                Serviço *
+              </label>
+              <select
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                value={idServico ?? ''}
+                onChange={e => setIdServico(Number(e.target.value) || null)}
+              >
+                <option value="">Selecione um serviço...</option>
+                {servicos.map(s => (
+                  <option key={s.id_servico} value={s.id_servico}>
+                    {s.nome} - R$ {Number(s.preco).toFixed(2)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <Calendar className="w-4 h-4 inline mr-1" />
+                Data e Hora *
+              </label>
+              <input
+                type="datetime-local"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                value={dataHora}
+                onChange={e => setDataHora(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <Clock className="w-4 h-4 inline mr-1" />
+                Duração (min)
+              </label>
+              <input
+                type="number"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                value={duracao}
+                onChange={e => setDuracao(Number(e.target.value))}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Observações
+              </label>
+              <input
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                value={obs}
+                onChange={e => setObs(e.target.value)}
+                placeholder="Observações adicionais..."
+              />
+            </div>
           </div>
-        ))}
-        {lista.length === 0 && <div className="p-3 text-sm text-gray-500">Sem agendamentos hoje</div>}
+
+          <button
+            onClick={criarAgendamento}
+            className="mt-4 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-medium hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
+          >
+            <Plus className="w-5 h-5" />
+            Criar Agendamento
+          </button>
+        </motion.div>
+
+        {/* Lista de Agendamentos de Hoje */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6"
+        >
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <Calendar className="w-5 h-5" />
+            Agendamentos de Hoje ({lista.length})
+          </h2>
+
+          <div className="space-y-3">
+            {lista.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <Calendar className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                <p>Nenhum agendamento para hoje</p>
+              </div>
+            ) : (
+              lista.map(a => (
+                <motion.div
+                  key={a.id_agendamento}
+                  whileHover={{ scale: 1.01 }}
+                  className="p-4 border border-gray-200 dark:border-gray-700 rounded-xl hover:border-blue-500 transition-colors"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Briefcase className="w-4 h-4 text-blue-500" />
+                        <span className="font-semibold text-gray-900 dark:text-white">
+                          {a.servico_nome || 'Serviço'}
+                        </span>
+                        {a.status === 'Confirmado' && (
+                          <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3" />
+                            Confirmado
+                          </span>
+                        )}
+                        {a.status === 'Pendente' && (
+                          <span className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs">
+                            Pendente
+                          </span>
+                        )}
+                        {a.status === 'Cancelado' && (
+                          <span className="px-2 py-1 bg-red-100 text-red-700 rounded-full text-xs flex items-center gap-1">
+                            <XCircle className="w-3 h-3" />
+                            Cancelado
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <PawPrint className="w-4 h-4" />
+                          <span>{a.pet_nome || 'Pet'} - {a.cliente_nome || 'Cliente'}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-4 h-4" />
+                          <span>{new Date(a.data_hora).toLocaleString('pt-BR')}</span>
+                          {a.duracao_estimada && <span>· {a.duracao_estimada}min</span>}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ))
+            )}
+          </div>
+        </motion.div>
       </div>
-    </div>
+    </AppLayout>
   );
 }

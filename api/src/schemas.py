@@ -21,8 +21,8 @@ class UserResponse(BaseModel):
     nome: str
     login: str
     cargo: str
-    empresa_id: int
-    empresa_nome: str
+    empresa_id: Optional[int] = None
+    empresa_nome: Optional[str] = None
 
 # ============ Cliente ============
 class ClienteBase(BaseModel):
@@ -167,3 +167,28 @@ class ProdutoMaisVendido(BaseModel):
     quantidade_total_vendida: int
     receita_gerada: float
     status_estoque: str
+
+# ============ Serviço ============
+class ServicoBase(BaseModel):
+    nome: str
+    descricao: Optional[str] = None
+    preco_base: float
+    ativo: Optional[bool] = True
+
+class ServicoCreate(ServicoBase):
+    pass
+
+class ServicoUpdate(BaseModel):
+    nome: Optional[str] = None
+    descricao: Optional[str] = None
+    preco_base: Optional[float] = None
+
+class ServicoAtivoUpdate(BaseModel):
+    ativo: bool
+
+class Servico(ServicoBase):
+    id_servico: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
