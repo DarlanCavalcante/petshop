@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  mariadb:
+    image: mariadb:11.4
+    container_name: petshop-mariadb
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-SenhaRoot123}
+      MARIADB_CHARACTER_SET_SERVER: utf8mb4
+      MARIADB_COLLATION_SERVER: utf8mb4_unicode_ci
+    ports:
+      - "3306:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - ./api/scripts:/docker-entrypoint-initdb.d:ro
+    networks:
+      - petshop-network
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: petshop-api
+    restart: unless-stopped
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: mysql+pymysql://root:${MYSQL_ROOT_PASSWORD:-SenhaRoot123}@mariadb:3306/petshop_empresa_teste
+      SECRET_KEY: ${SECRET_KEY:-mudar-em-producao-gerar-com-openssl-rand-hex-32}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./api:/app
+    networks:
+      - petshop-network
+    command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+
+  frontend:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: petshop-frontend
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      NEXT_PUBLIC_API_URL: http://192.168.0.254:8000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./web:/app
+      - /app/node_modules
+      - /app/.next
+    networks:
+      - petshop-network
+
+volumes:
+  mariadb_data:
+    driver: local
+
+networks:
+  petshop-network:
+    driver: bridge
