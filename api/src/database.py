@@ -117,3 +117,13 @@ def get_db(request: Request):
         yield db
     finally:
         db.close()
+
+
+def get_db_by_empresa(empresa_code: str = "teste"):
+    """Retorna uma sessão de banco para uma empresa específica.
+    Útil para rotas async que não usam Depends(get_db).
+    IMPORTANTE: O chamador deve fechar a sessão manualmente ou usar context manager.
+    """
+    engine = get_engine_for_empresa(empresa_code)
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    return SessionLocal()

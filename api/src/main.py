@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from src.config import get_settings
 from src.database import get_engine_for_empresa
-from src.routes import auth, clientes, vendas, agendamentos, kpis, produtos, servicos
+from src.routes import auth, clientes, vendas, agendamentos, kpis, produtos, servicos, pacotes
 
 settings = get_settings()
 
@@ -21,7 +21,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Petshop API",
     description="API REST para gestão completa de petshop com integração ao banco MySQL",
-    version="1.0.0",
+    version="1.3.0",
     lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc"
@@ -44,6 +44,7 @@ app.include_router(agendamentos.router)
 app.include_router(kpis.router)
 app.include_router(produtos.router)
 app.include_router(servicos.router)
+app.include_router(pacotes.router)
 
 @app.get("/")
 def root():
@@ -51,9 +52,9 @@ def root():
     return {
         "status": "ok",
         "service": "Petshop API",
-        "version": "1.1.0",
-        "database_version": 11,
-        "features": ["multi-database", "jwt-auth", "procedures", "kpis"],
+        "version": "1.3.0",
+        "database_version": 13,
+        "features": ["multi-database", "jwt-auth", "procedures", "kpis", "pacotes", "calendario-agendamentos"],
         "docs": "/docs"
     }
 

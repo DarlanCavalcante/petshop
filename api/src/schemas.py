@@ -107,6 +107,7 @@ class AgendamentoCreate(BaseModel):
     data_hora: datetime
     duracao_estimada: Optional[int] = 60
     observacoes: Optional[str] = None
+    id_cliente_pacote: Optional[int] = None  # Pacote utilizado (créditos ou combo)
 
 class Agendamento(BaseModel):
     id_agendamento: int
@@ -192,3 +193,66 @@ class Servico(ServicoBase):
 
     class Config:
         from_attributes = True
+
+# ============ Pacote ============
+class PacoteBase(BaseModel):
+    nome: str
+    descricao: Optional[str] = None
+    tipo: str = 'combo'  # 'combo' ou 'creditos'
+    preco_base: float
+    validade_dias: Optional[int] = None  # Apenas para tipo 'creditos'
+    max_usos: Optional[int] = None  # Apenas para tipo 'creditos'
+    ativo: bool = True
+
+class PacoteCreate(PacoteBase):
+    servicos_ids: list[int] = []  # IDs dos serviços incluídos no pacote
+
+class PacoteUpdate(BaseModel):
+    nome: Optional[str] = None
+    descricao: Optional[str] = None
+    preco_base: Optional[float] = None
+    validade_dias: Optional[int] = None
+    max_usos: Optional[int] = None
+    ativo: Optional[bool] = None
+    servicos_ids: Optional[list[int]] = None
+
+class Pacote(PacoteBase):
+    id_pacote: int
+    data_criacao: datetime
+    data_atualizacao: datetime
+
+    class Config:
+        from_attributes = True
+
+class PacoteComServicos(Pacote):
+    servicos: list[dict] = []  # Lista de serviços incluídos com detalhes
+
+# ============ Cliente Pacote (Compra) ============
+class ClientePacoteCreate(BaseModel):
+    id_pacote: int
+    valor_pago: Optional[float] = None  # Se não informado, usa preco_base do pacote
+    observacoes: Optional[str] = None
+
+class ClientePacoteUpdate(BaseModel):
+    status: Optional[str] = None  # 'ativo', 'usado', 'expirado', 'cancelado'
+    observacoes: Optional[str] = None
+
+class ClientePacote(BaseModel):
+    id_cliente_pacote: int
+    id_cliente: int
+    id_pacote: int
+    data_compra: datetime
+    data_validade: Optional[date] = None
+    usos_restantes: Optional[int] = None
+    status: str
+    valor_pago: float
+    observacoes: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class ClientePacoteDetalhado(ClientePacote):
+    pacote_nome: str
+    pacote_tipo: str
+    pacote_descricao: Optional[str] = None
+    servicos: list[dict] = []

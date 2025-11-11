@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard,
   Package,
+  Package as Package2,
   ShoppingCart,
   Calendar,
   BarChart3,
@@ -27,6 +28,7 @@ const menuItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/produtos', icon: Package, label: 'Produtos' },
   { href: '/servicos', icon: Briefcase, label: 'Serviços' },
+  { href: '/pacotes', icon: Package2, label: 'Pacotes' },
   { href: '/venda', icon: ShoppingCart, label: 'Vendas' },
   { href: '/agendamentos', icon: Calendar, label: 'Agendamentos' },
   { href: '/kpis', icon: BarChart3, label: 'Relatórios' },

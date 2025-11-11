@@ -7,6 +7,72 @@ import { toast } from 'react-hot-toast';
 import AppLayout from '@/components/AppLayout';
 import { API_URL } from '@/lib/config';
 
+// Componente para listar pacotes ativos do cliente
+function PacotesDoCliente({ idCliente }: { idCliente: number }) {
+  const [loading, setLoading] = useState(true);
+  const [pacotes, setPacotes] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchPacotes = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const empresa = localStorage.getItem('empresa') || 'teste';
+        const res = await fetch(`${API_URL}/clientes/${idCliente}/pacotes?status=ativo`, {
+          headers: { 'Authorization': `Bearer ${token}`, 'X-Empresa': empresa },
+          mode: 'cors'
+        });
+        if (res.ok) {
+          setPacotes(await res.json());
+        }
+      } catch (e) {
+        // silencioso
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPacotes();
+  }, [idCliente]);
+
+  return (
+    <div className="mt-6">
+      <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+        <span>Pacotes Ativos</span>
+        <span className="text-xs font-medium px-2 py-1 bg-purple-100 text-purple-700 rounded-full dark:bg-purple-900 dark:text-purple-300">{loading ? '...' : pacotes.length}</span>
+      </h3>
+      {loading && <p className="text-sm text-gray-500 dark:text-gray-400">Carregando pacotes...</p>}
+      {!loading && pacotes.length === 0 && (
+        <p className="text-sm text-gray-500 dark:text-gray-400 italic">Nenhum pacote ativo</p>
+      )}
+      <div className="space-y-3">
+        {pacotes.map(p => (
+          <div key={p.id_cliente_pacote} className="border border-gray-200 dark:border-gray-700 rounded-xl p-3 bg-gray-50 dark:bg-gray-700/40">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="font-semibold text-sm">{p.pacote_nome}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{p.pacote_tipo === 'creditos' ? 'Créditos' : 'Combo único'}</p>
+              </div>
+              {p.pacote_tipo === 'creditos' && (
+                <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">Restantes: {p.usos_restantes}</span>
+              )}
+            </div>
+            {p.data_validade && (
+              <p className="text-xs mt-1 text-gray-600 dark:text-gray-400">Validade: {new Date(p.data_validade).toLocaleDateString()}</p>
+            )}
+            <div className="mt-2 flex flex-wrap gap-1">
+              {p.servicos.slice(0,6).map((s: any) => (
+                <span key={s.id_servico} className="text-[10px] px-2 py-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-full">{s.nome}</span>
+              ))}
+              {p.servicos.length > 6 && (
+                <span className="text-[10px] px-2 py-1 bg-purple-100 text-purple-700 rounded-full">+{p.servicos.length - 6}</span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 interface Cliente {
   id_cliente: number;
   nome: string;
@@ -31,6 +97,10 @@ export default function ClientesPage() {
   const [showModal, setShowModal] = useState(false);
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [showBuyModal, setShowBuyModal] = useState(false);
+  const [pacotes, setPacotes] = useState<any[]>([]);
+  const [pacoteId, setPacoteId] = useState<number | null>(null);
+  const [valorPago, setValorPago] = useState<string>('');
   const [formData, setFormData] = useState({
     nome: '',
     cpf: '',
@@ -121,6 +191,56 @@ export default function ClientesPage() {
 
   const handleDeleteCliente = (cliente: Cliente) => {
     toast('Funcionalidade de exclusão em desenvolvimento', { icon: '🚧' });
+  };
+
+  const abrirVendaPacote = async (cliente: Cliente) => {
+    setSelectedCliente(cliente);
+    setPacoteId(null);
+    setValorPago('');
+    try {
+      const token = localStorage.getItem('token');
+      const empresa = localStorage.getItem('empresa') || 'teste';
+      const res = await fetch(`${API_URL}/pacotes?ativo=true`, {
+        headers: { 'Authorization': `Bearer ${token}`, 'X-Empresa': empresa },
+        mode: 'cors'
+      });
+      if (res.ok) {
+        setPacotes(await res.json());
+        setShowBuyModal(true);
+      } else {
+        toast.error('Não foi possível carregar pacotes');
+      }
+    } catch (e: any) {
+      toast.error('Erro ao carregar pacotes');
+    }
+  };
+
+  const confirmarVendaPacote = async () => {
+    if (!selectedCliente || !pacoteId) {
+      toast.error('Selecione um pacote');
+      return;
+    }
+    try {
+      const token = localStorage.getItem('token');
+      const empresa = localStorage.getItem('empresa') || 'teste';
+      const payload: any = { id_pacote: pacoteId };
+      if (valorPago) payload.valor_pago = parseFloat(valorPago);
+      const res = await fetch(`${API_URL}/clientes/${selectedCliente.id_cliente}/pacotes`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'X-Empresa': empresa,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload),
+        mode: 'cors'
+      });
+      if (!res.ok) throw new Error(await res.text());
+      toast.success('Pacote vendido com sucesso!');
+      setShowBuyModal(false);
+    } catch (e: any) {
+      toast.error('Erro ao vender pacote');
+    }
   };
 
   return (
@@ -265,6 +385,15 @@ export default function ClientesPage() {
                     <motion.button
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
+                      onClick={() => abrirVendaPacote(cliente)}
+                      className="flex-1 p-2 bg-purple-100 text-purple-600 rounded-lg hover:bg-purple-200 transition-colors flex items-center justify-center gap-1"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span className="text-sm">Vender Pacote</span>
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
                       onClick={() => handleEditCliente(cliente)}
                       className="flex-1 p-2 bg-green-100 text-green-600 rounded-lg hover:bg-green-200 transition-colors flex items-center justify-center gap-1"
                     >
@@ -326,6 +455,58 @@ export default function ClientesPage() {
                   {selectedCliente.nome.charAt(0).toUpperCase()}
                 </div>
                 <div>
+
+                {/* Modal Vender Pacote */}
+                <AnimatePresence>
+                  {showBuyModal && selectedCliente && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+                    >
+                      <motion.div
+                        initial={{ scale: 0.9, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0.9, opacity: 0 }}
+                        className="w-full max-w-lg bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-4"
+                      >
+                        <h2 className="text-xl font-bold">Vender Pacote para {selectedCliente.nome}</h2>
+                        <div className="space-y-3">
+                          <div>
+                            <label className="text-sm font-medium">Pacote *</label>
+                            <select
+                              className="mt-1 w-full px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700"
+                              value={pacoteId ?? ''}
+                              onChange={e => setPacoteId(Number(e.target.value) || null)}
+                            >
+                              <option value="">Selecione um pacote...</option>
+                              {pacotes.map((p: any) => (
+                                <option key={p.id_pacote} value={p.id_pacote}>
+                                  {p.nome} {p.tipo === 'creditos' ? `(Créditos: ${p.max_usos} / ${p.validade_dias} dias)` : '(Combo)'} - R$ {Number(p.preco_base).toFixed(2)}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium">Valor Pago (opcional)</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              className="mt-1 w-full px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700"
+                              value={valorPago}
+                              onChange={e => setValorPago(e.target.value)}
+                            />
+                          </div>
+                        </div>
+                        <div className="flex justify-end gap-3">
+                          <button onClick={() => setShowBuyModal(false)} className="px-4 py-2 rounded-xl bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600">Cancelar</button>
+                          <button onClick={confirmarVendaPacote} className="px-5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700 shadow-lg">Confirmar</button>
+                        </div>
+                      </motion.div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
                   <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
                     {selectedCliente.nome}
                   </h2>
@@ -356,6 +537,9 @@ export default function ClientesPage() {
                     </>
                   )}
                 </div>
+
+                {/* Pacotes ativos do cliente */}
+                <PacotesDoCliente idCliente={selectedCliente.id_cliente} />
               </div>
 
               <div className="mt-6 flex justify-end">

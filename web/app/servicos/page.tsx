@@ -11,6 +11,7 @@ interface Servico {
   nome: string;
   descricao: string;
   preco_base: string; // vem como string do backend
+  duracao_padrao: number | null; // duração em minutos
   ativo: number; // 1 ou 0
   created_at: string;
 }
@@ -21,12 +22,14 @@ export default function ServicosPage() {
   const [nome, setNome] = useState('');
   const [descricao, setDescricao] = useState('');
   const [preco, setPreco] = useState('');
+  const [duracao, setDuracao] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editing, setEditing] = useState<Servico | null>(null);
   const [editNome, setEditNome] = useState('');
   const [editDescricao, setEditDescricao] = useState('');
   const [editPreco, setEditPreco] = useState('');
+  const [editDuracao, setEditDuracao] = useState('');
   const [token, setToken] = useState<string | null>(null);
   const [empresa, setEmpresa] = useState<string>('');
 
@@ -58,7 +61,14 @@ export default function ServicosPage() {
   async function criarServico() {
     try {
       if (!token) throw new Error('Sem token');
-      const payload = { nome, descricao, preco_base: parseFloat(preco), ativo: true };
+      const payload: any = { 
+        nome, 
+        descricao, 
+        preco_base: parseFloat(preco), 
+        ativo: true 
+      };
+      if (duracao) payload.duracao_padrao = parseInt(duracao);
+      
       const res = await fetch(`${API_URL}/servicos`, {
         method: 'POST',
         headers: {
@@ -72,7 +82,7 @@ export default function ServicosPage() {
       if (!res.ok) throw new Error(await res.text());
       toast.success('Serviço criado');
       setShowModal(false);
-      setNome(''); setDescricao(''); setPreco('');
+      setNome(''); setDescricao(''); setPreco(''); setDuracao('');
       load();
     } catch (err: any) {
       toast.error(err.message);
@@ -102,6 +112,7 @@ export default function ServicosPage() {
     setEditNome(s.nome || '');
     setEditDescricao(s.descricao || '');
     setEditPreco(String(Number(s.preco_base).toFixed(2)));
+    setEditDuracao(s.duracao_padrao ? String(s.duracao_padrao) : '');
     setShowEditModal(true);
   }
 
@@ -114,6 +125,9 @@ export default function ServicosPage() {
       if (editNome !== editing.nome) payload.nome = editNome;
       if (editDescricao !== (editing.descricao || '')) payload.descricao = editDescricao;
       if (Number(editPreco) !== Number(editing.preco_base)) payload.preco_base = Number(editPreco);
+      const newDur = editDuracao ? parseInt(editDuracao) : null;
+      if (newDur !== editing.duracao_padrao) payload.duracao_padrao = newDur;
+      
       if (Object.keys(payload).length === 0) {
         toast('Nada para atualizar');
         setShowEditModal(false);
@@ -176,6 +190,9 @@ export default function ServicosPage() {
                       </h2>
                       <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-3">{s.descricao || 'Sem descrição'}</p>
                       <p className="mt-2 font-medium text-gray-900 dark:text-gray-200">R$ {Number(s.preco_base).toFixed(2)}</p>
+                      {s.duracao_padrao && (
+                        <p className="text-xs text-gray-500 mt-1">⏱️ {s.duracao_padrao} min</p>
+                      )}
                       <p className="text-xs mt-1 text-gray-500">Criado: {new Date(s.created_at).toLocaleDateString('pt-BR')}</p>
                     </div>
                     <button
@@ -224,6 +241,10 @@ export default function ServicosPage() {
                 <label className="text-sm font-medium">Preço Base *</label>
                 <input type="number" step="0.01" className="mt-1 w-full px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700" value={preco} onChange={e => setPreco(e.target.value)} />
               </div>
+              <div>
+                <label className="text-sm font-medium">Duração Padrão (minutos)</label>
+                <input type="number" min="0" className="mt-1 w-full px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700" value={duracao} onChange={e => setDuracao(e.target.value)} placeholder="Ex: 30" />
+              </div>
             </div>
             <div className="flex justify-end gap-3 pt-2">
               <button onClick={() => setShowModal(false)} className="px-4 py-2 rounded-xl bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600">Cancelar</button>
@@ -263,6 +284,10 @@ export default function ServicosPage() {
               <div>
                 <label className="text-sm font-medium">Preço Base *</label>
                 <input type="number" step="0.01" className="mt-1 w-full px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700" value={editPreco} onChange={e => setEditPreco(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Duração Padrão (minutos)</label>
+                <input type="number" min="0" className="mt-1 w-full px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700" value={editDuracao} onChange={e => setEditDuracao(e.target.value)} placeholder="Ex: 30" />
               </div>
             </div>
             <div className="flex justify-end gap-3 pt-2">

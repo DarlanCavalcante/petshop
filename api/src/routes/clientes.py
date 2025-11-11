@@ -1,11 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from typing import List
+from datetime import datetime, timedelta
 
-from src.database import get_db
-from src.schemas import Cliente, ClienteCreate, ClienteUpdate, Pet
+from src.database import get_db, get_db_by_empresa
+from src.schemas import Cliente, ClienteCreate, ClienteUpdate, Pet, ClientePacoteCreate, ClientePacoteDetalhado
 from src.routes.auth import get_current_user_id
+from src.auth import get_current_user
 
 router = APIRouter(prefix="/clientes", tags=["Clientes"])
 
@@ -128,3 +130,140 @@ def desativar_cliente(id_cliente: int, db: Session = Depends(get_db), current_us
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=f"Erro ao desativar: {str(e)}")
+
+
+# ==================== Pacotes do Cliente ====================
+
+@router.post("/{id_cliente}/pacotes", response_model=ClientePacoteDetalhado, status_code=201)
+async def comprar_pacote(
+    id_cliente: int,
+    compra: ClientePacoteCreate,
+    current_user: dict = Depends(get_current_user),
+    x_empresa: str = Header(default="teste")
+):
+    """Registra compra de pacote para um cliente"""
+    db = get_db_by_empresa(x_empresa)
+    
+    # Verificar se cliente existe
+    check_cliente = db.execute(text("SELECT id_cliente FROM clientes WHERE id_cliente = :id"), {"id": id_cliente})
+    if not check_cliente.fetchone():
+        raise HTTPException(404, "Cliente não encontrado")
+    
+    # Buscar informações do pacote
+    query_pacote = text("SELECT * FROM pacotes WHERE id_pacote = :id AND ativo = TRUE")
+    pacote = db.execute(query_pacote, {"id": compra.id_pacote}).fetchone()
+    
+    if not pacote:
+        raise HTTPException(404, "Pacote não encontrado ou inativo")
+    
+    # Calcular data de validade (se tipo créditos)
+    data_validade = None
+    usos_restantes = None
+    
+    if pacote.tipo == 'creditos':
+        data_validade = datetime.now().date() + timedelta(days=pacote.validade_dias)
+        usos_restantes = pacote.max_usos
+    
+    # Valor pago (usar preco_base se não informado)
+    valor_pago = compra.valor_pago if compra.valor_pago else float(pacote.preco_base)
+    
+    # Inserir compra
+    query_insert = text("""
+        INSERT INTO clientes_pacotes 
+        (id_cliente, id_pacote, data_validade, usos_restantes, status, valor_pago, observacoes)
+        VALUES (:id_cliente, :id_pacote, :data_validade, :usos_restantes, 'ativo', :valor_pago, :observacoes)
+    """)
+    
+    result = db.execute(query_insert, {
+        "id_cliente": id_cliente,
+        "id_pacote": compra.id_pacote,
+        "data_validade": data_validade,
+        "usos_restantes": usos_restantes,
+        "valor_pago": valor_pago,
+        "observacoes": compra.observacoes
+    })
+    db.commit()
+    
+    id_cliente_pacote = result.lastrowid
+    
+    # Buscar dados completos
+    query_detalhado = text("""
+        SELECT 
+            cp.*,
+            p.nome as pacote_nome,
+            p.tipo as pacote_tipo,
+            p.descricao as pacote_descricao
+        FROM clientes_pacotes cp
+        JOIN pacotes p ON cp.id_pacote = p.id_pacote
+        WHERE cp.id_cliente_pacote = :id
+    """)
+    
+    result = db.execute(query_detalhado, {"id": id_cliente_pacote})
+    row = result.fetchone()
+    
+    response = dict(row._mapping)
+    
+    # Buscar serviços do pacote
+    query_servicos = text("""
+        SELECT s.id_servico, s.nome, s.preco_base, ps.quantidade
+        FROM pacotes_servicos ps
+        JOIN servicos s ON ps.id_servico = s.id_servico
+        WHERE ps.id_pacote = :id_pacote
+    """)
+    servicos_result = db.execute(query_servicos, {"id_pacote": compra.id_pacote})
+    servicos = [dict(row._mapping) for row in servicos_result.fetchall()]
+    
+    response['servicos'] = servicos
+    
+    return response
+
+
+@router.get("/{id_cliente}/pacotes", response_model=List[ClientePacoteDetalhado])
+async def listar_pacotes_cliente(
+    id_cliente: int,
+    status: str = None,  # Filtrar por status: ativo, usado, expirado
+    current_user: dict = Depends(get_current_user),
+    x_empresa: str = Header(default="teste")
+):
+    """Lista todos os pacotes comprados por um cliente"""
+    db = get_db_by_empresa(x_empresa)
+    
+    query = """
+        SELECT 
+            cp.*,
+            p.nome as pacote_nome,
+            p.tipo as pacote_tipo,
+            p.descricao as pacote_descricao
+        FROM clientes_pacotes cp
+        JOIN pacotes p ON cp.id_pacote = p.id_pacote
+        WHERE cp.id_cliente = :id_cliente
+    """
+    params = {"id_cliente": id_cliente}
+    
+    if status:
+        query += " AND cp.status = :status"
+        params["status"] = status
+    
+    query += " ORDER BY cp.data_compra DESC"
+    
+    result = db.execute(text(query), params)
+    rows = result.fetchall()
+    
+    pacotes = []
+    for row in rows:
+        pacote_dict = dict(row._mapping)
+        
+        # Buscar serviços
+        query_servicos = text("""
+            SELECT s.id_servico, s.nome, s.preco_base, ps.quantidade
+            FROM pacotes_servicos ps
+            JOIN servicos s ON ps.id_servico = s.id_servico
+            WHERE ps.id_pacote = :id_pacote
+        """)
+        servicos_result = db.execute(query_servicos, {"id_pacote": pacote_dict['id_pacote']})
+        servicos = [dict(row._mapping) for row in servicos_result.fetchall()]
+        
+        pacote_dict['servicos'] = servicos
+        pacotes.append(pacote_dict)
+    
+    return pacotes

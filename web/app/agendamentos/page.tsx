@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from 'framer-motion';
-import { Calendar, Clock, User, PawPrint, Briefcase, Plus, CheckCircle, XCircle } from 'lucide-react';
+import { Calendar, Clock, User, PawPrint, Briefcase, Plus, CheckCircle, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
 import AppLayout from '@/components/AppLayout';
 import { API_URL } from '@/lib/config';
@@ -23,6 +23,8 @@ export default function AgendamentosPage() {
   const [clientes, setClientes] = useState<any[]>([]);
   const [pets, setPets] = useState<any[]>([]);
   const [servicos, setServicos] = useState<any[]>([]);
+  const [pacotesCliente, setPacotesCliente] = useState<any[]>([]);
+  const [idClientePacote, setIdClientePacote] = useState<number | null>(null);
   const [idCliente, setIdCliente] = useState<number | null>(null);
   const [idPet, setIdPet] = useState<number | null>(null);
   const [idServico, setIdServico] = useState<number | null>(null);
@@ -31,6 +33,12 @@ export default function AgendamentosPage() {
   const [duracao, setDuracao] = useState<number>(45);
   const [obs, setObs] = useState<string>("");
   const [loading, setLoading] = useState(true);
+  // Estados do calendário
+  const hoje = new Date();
+  const [calAno, setCalAno] = useState<number>(hoje.getFullYear());
+  const [calMes, setCalMes] = useState<number>(hoje.getMonth() + 1); // 1-12
+  const [selecionado, setSelecionado] = useState<string>(`${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-${String(hoje.getDate()).padStart(2,'0')}`);
+  const [contagens, setContagens] = useState<Record<string, number>>({});
 
   useEffect(() => {
     loadData();
@@ -58,11 +66,9 @@ export default function AgendamentosPage() {
         setIdFuncionario(userData.id);
       }
 
-      // Carregar agendamentos de hoje
-      const agendaRes = await fetch(`${API_URL}/agendamentos/hoje`, { headers, mode: 'cors' });
-      if (agendaRes.ok) {
-        setLista(await agendaRes.json());
-      }
+      // Carregar contagens do mês e agendamentos do dia selecionado inicial
+      await fetchContagens(calAno, calMes, headers);
+      await loadAgendamentosPorData(selecionado, headers);
 
       // Carregar clientes
       const clientesRes = await fetch(`${API_URL}/clientes`, { headers, mode: 'cors' });
@@ -84,10 +90,87 @@ export default function AgendamentosPage() {
     }
   };
 
+  const fetchContagens = async (ano: number, mes: number, headers?: any) => {
+    try {
+      const token = localStorage.getItem("token");
+      const empresa = localStorage.getItem("empresa") || "teste";
+      const h = headers || { "Authorization": `Bearer ${token}`, "X-Empresa": empresa };
+      const res = await fetch(`${API_URL}/agendamentos/calendario?ano=${ano}&mes=${mes}`, { headers: h, mode: 'cors' });
+      if (res.ok) {
+        const data = await res.json();
+        const map: Record<string, number> = {};
+        for (const row of data) {
+          const d = new Date(row.dia);
+          const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+          map[key] = row.total;
+        }
+        setContagens(map);
+      }
+    } catch {}
+  };
+
+  const loadAgendamentosPorData = async (data: string, headers?: any) => {
+    const token = localStorage.getItem("token");
+    const empresa = localStorage.getItem("empresa") || "teste";
+    const h = headers || { "Authorization": `Bearer ${token}`, "X-Empresa": empresa };
+    const res = await fetch(`${API_URL}/agendamentos?data=${data}`, { headers: h, mode: 'cors' });
+    if (res.ok) setLista(await res.json());
+  };
+
+  const mudarMes = async (delta: number) => {
+    let ano = calAno;
+    let mes = calMes + delta;
+    if (mes < 1) { mes = 12; ano -= 1; }
+    if (mes > 12) { mes = 1; ano += 1; }
+    setCalAno(ano);
+    setCalMes(mes);
+    await fetchContagens(ano, mes);
+  };
+
+  const selecionarDia = async (dia: number) => {
+    const key = `${calAno}-${String(calMes).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
+    setSelecionado(key);
+    setDataHora(`${key}T09:00`); // horário padrão
+    await loadAgendamentosPorData(key);
+  };
+
+  const diasDoMes = () => {
+    const total = new Date(calAno, calMes, 0).getDate(); // calMes é 1-12, JS aceita mês-1? Aqui: new Date(ano, mes, 0) => último dia do mês anterior; melhor usar (calMes,0) para obter último dia do mês atual? Ajuste: calMes index 1-12. new Date(calAno, calMes, 0) retorna último dia do mês calMes (porque mês 1 = fevereiro). Corrigir: usar (calMes, 0) com calMes baseado em 1-12 para obter último dia correto.
+    const lastDay = new Date(calAno, calMes, 0).getDate();
+    return lastDay;
+  };
+
+  const gerarGridDias = () => {
+    const primeiroDiaSemana = new Date(calAno, calMes - 1, 1).getDay(); // 0=domingo
+    const totalDias = new Date(calAno, calMes, 0).getDate();
+    const cells: (number | null)[] = [];
+    // Preenchimento inicial em branco
+    for (let i = 0; i < primeiroDiaSemana; i++) cells.push(null);
+    for (let d = 1; d <= totalDias; d++) cells.push(d);
+    return cells;
+  };
+
+  const formatSelecionado = () => {
+    const [y,m,d] = selecionado.split('-');
+    return `${d}/${m}/${y}`;
+  };
+
+  const onServicoChange = (sid: number | null) => {
+    setIdServico(sid);
+    if (!sid) return;
+
+    const servico = servicos.find(s => s.id_servico === sid);
+    if (servico?.duracao_padrao) {
+      setDuracao(servico.duracao_padrao);
+    }
+  };
+
   const onClienteChange = async (cid: number | null) => {
     setIdCliente(cid);
     setIdPet(null);
     setPets([]);
+    setPacotesCliente([]);
+    setIdClientePacote(null);
     
     if (!cid) return;
 
@@ -106,6 +189,18 @@ export default function AgendamentosPage() {
       if (petsRes.ok) {
         setPets(await petsRes.json());
       }
+
+      // Carregar pacotes do cliente
+      const pacotesRes = await fetch(`${API_URL}/clientes/${cid}/pacotes?status=ativo`, {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "X-Empresa": empresa
+        },
+        mode: 'cors'
+      });
+      if (pacotesRes.ok) {
+        setPacotesCliente(await pacotesRes.json());
+      }
     } catch (error) {
       console.error('Erro ao carregar pets:', error);
     }
@@ -122,7 +217,7 @@ export default function AgendamentosPage() {
         return;
       }
 
-      const payload = {
+      const payload: any = {
         id_pet: idPet,
         id_servico: idServico,
         id_funcionario: idFuncionario,
@@ -130,6 +225,7 @@ export default function AgendamentosPage() {
         duracao_estimada: duracao,
         observacoes: obs
       };
+      if (idClientePacote) payload.id_cliente_pacote = idClientePacote;
 
       const res = await fetch(`${API_URL}/agendamentos`, {
         method: "POST",
@@ -245,16 +341,33 @@ export default function AgendamentosPage() {
               <select
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
                 value={idServico ?? ''}
-                onChange={e => setIdServico(Number(e.target.value) || null)}
+                onChange={e => onServicoChange(Number(e.target.value) || null)}
               >
                 <option value="">Selecione um serviço...</option>
-                {servicos.map(s => (
+                {(idClientePacote ? pacotesCliente.find(p => p.id_cliente_pacote === idClientePacote)?.servicos || [] : servicos).map((s: any) => (
                   <option key={s.id_servico} value={s.id_servico}>
                     {s.nome} - R$ {Number(s.preco).toFixed(2)}
                   </option>
                 ))}
               </select>
             </div>
+            {pacotesCliente.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Pacote (opcional)</label>
+                <select
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
+                  value={idClientePacote ?? ''}
+                  onChange={e => setIdClientePacote(Number(e.target.value) || null)}
+                >
+                  <option value="">Sem pacote...</option>
+                  {pacotesCliente.map((p: any) => (
+                    <option key={p.id_cliente_pacote} value={p.id_cliente_pacote}>
+                      {p.pacote_nome} {p.pacote_tipo === 'creditos' ? `(Restantes: ${p.usos_restantes})` : '(Combo)'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -304,6 +417,62 @@ export default function AgendamentosPage() {
           </button>
         </motion.div>
 
+        {/* Calendário Mensal */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <Calendar className="w-5 h-5" />
+              Calendário {String(calMes).padStart(2,'0')}/{calAno}
+            </h2>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => mudarMes(-1)}
+                className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => mudarMes(1)}
+                className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+          <div className="grid grid-cols-7 gap-2 text-center text-sm font-medium mb-2">
+            {['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map(d => (
+              <div key={d} className="text-gray-600 dark:text-gray-400">{d}</div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-2">
+            {gerarGridDias().map((dia, idx) => {
+              if (dia === null) return <div key={idx} />;
+              const key = `${calAno}-${String(calMes).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
+              const total = contagens[key] || 0;
+              const ativo = key === selecionado;
+              return (
+                <button
+                  key={idx}
+                  onClick={() => selecionarDia(dia)}
+                  className={`relative flex flex-col items-center justify-center h-16 rounded-xl border text-sm transition-all group
+                    ${ativo ? 'bg-blue-600 text-white border-blue-700 shadow-lg' : 'bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-600 hover:bg-white dark:hover:bg-gray-600'}`}
+                >
+                  <span className="font-semibold">{dia}</span>
+                  <span className={`text-xs mt-1 ${ativo ? 'text-blue-100' : 'text-gray-500 dark:text-gray-400'}`}>{total} agds</span>
+                  {ativo && (
+                    <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-white animate-pulse" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">Selecionado: {formatSelecionado()} · {contagens[selecionado] || 0} agendamentos</p>
+        </motion.div>
+
         {/* Lista de Agendamentos de Hoje */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -313,7 +482,7 @@ export default function AgendamentosPage() {
         >
           <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
             <Calendar className="w-5 h-5" />
-            Agendamentos de Hoje ({lista.length})
+            Agendamentos em {formatSelecionado()} ({lista.length})
           </h2>
 
           <div className="space-y-3">

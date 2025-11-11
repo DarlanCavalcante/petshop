@@ -25,6 +25,7 @@ def criar_agendamento(agendamento: AgendamentoCreate, db: Session = Depends(get_
     """)
     
     try:
+        # Criar agendamento via procedure
         db.execute(query, {
             "id_pet": agendamento.id_pet,
             "id_servico": agendamento.id_servico,
@@ -33,14 +34,46 @@ def criar_agendamento(agendamento: AgendamentoCreate, db: Session = Depends(get_
             "duracao_estimada": agendamento.duracao_estimada,
             "observacoes": agendamento.observacoes
         })
-        
         result = db.execute(text("SELECT @p_id_agendamento AS id_agendamento")).fetchone()
-        db.commit()
+        new_id = result.id_agendamento
         
-        return {
-            "id_agendamento": result.id_agendamento,
-            "message": "Agendamento criado com sucesso"
-        }
+        # Se usar pacote, registrar uso
+        if agendamento.id_cliente_pacote:
+            # Buscar pacote do cliente
+            pacote_row = db.execute(text("SELECT cp.id_cliente_pacote, cp.usos_restantes, cp.status, p.tipo FROM clientes_pacotes cp JOIN pacotes p ON cp.id_pacote = p.id_pacote WHERE cp.id_cliente_pacote = :id AND cp.status = 'ativo'"), {"id": agendamento.id_cliente_pacote}).fetchone()
+            if not pacote_row:
+                raise HTTPException(status_code=400, detail="Pacote inválido ou inativo")
+            tipo_pacote = pacote_row.tipo
+            usos_restantes = pacote_row.usos_restantes
+            
+            # Registrar uso
+            db.execute(text("""
+                INSERT INTO clientes_pacotes_uso (id_cliente_pacote, id_agendamento, id_servico, observacoes)
+                VALUES (:id_cliente_pacote, :id_agendamento, :id_servico, :obs)
+            """), {
+                "id_cliente_pacote": agendamento.id_cliente_pacote,
+                "id_agendamento": new_id,
+                "id_servico": agendamento.id_servico,
+                "obs": agendamento.observacoes
+            })
+            
+            # Atualizar contadores/status
+            if tipo_pacote == 'creditos':
+                if usos_restantes is None or usos_restantes <= 0:
+                    raise HTTPException(status_code=400, detail="Pacote sem créditos disponíveis")
+                novo_restante = usos_restantes - 1
+                status_novo = 'usado' if novo_restante == 0 else 'ativo'
+                db.execute(text("UPDATE clientes_pacotes SET usos_restantes = :restante, status = :status WHERE id_cliente_pacote = :id"), {
+                    "restante": novo_restante,
+                    "status": status_novo,
+                    "id": agendamento.id_cliente_pacote
+                })
+            else:  # combo
+                # Pacote combo é marcado como usado imediatamente
+                db.execute(text("UPDATE clientes_pacotes SET status = 'usado' WHERE id_cliente_pacote = :id"), {"id": agendamento.id_cliente_pacote})
+        
+        db.commit()
+        return {"id_agendamento": new_id, "message": "Agendamento criado com sucesso"}
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=f"Erro ao criar agendamento: {str(e)}")
@@ -105,3 +138,29 @@ def atualizar_status_agendamento(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=f"Erro: {str(e)}")
+
+
+@router.get("/calendario", response_model=list[dict])
+def calendario_agendamentos(
+    ano: int, 
+    mes: int,
+    db: Session = Depends(get_db), 
+    current_user: int = Depends(get_current_user_id)
+):
+    """Retorna contagem de agendamentos por dia de um mês específico.
+    Uso: /agendamentos/calendario?ano=2025&mes=11
+    """
+    if mes < 1 or mes > 12:
+        raise HTTPException(status_code=400, detail="Mês inválido (1-12)")
+    if ano < 2000 or ano > 2100:
+        raise HTTPException(status_code=400, detail="Ano inválido")
+
+    query = text("""
+        SELECT DATE(data_hora) as dia, COUNT(*) as total
+        FROM agendamentos
+        WHERE YEAR(data_hora) = :ano AND MONTH(data_hora) = :mes
+        GROUP BY DATE(data_hora)
+        ORDER BY dia
+    """)
+    result = db.execute(query, {"ano": ano, "mes": mes}).fetchall()
+    return [dict(r._mapping) for r in result]
