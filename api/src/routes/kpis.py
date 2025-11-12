@@ -36,8 +36,11 @@ def receita_diaria(db: Session = Depends(get_db), current_user: int = Depends(ge
 @router.get("/top-clientes")
 def top_clientes(limit: int = 10, db: Session = Depends(get_db), current_user: int = Depends(get_current_user_id)):
     """Clientes que mais gastaram"""
-    query = f"SELECT * FROM vw_top_clientes LIMIT {limit}"
-    result = db.execute(query).fetchall()
+    from sqlalchemy import text
+    # Validar limite
+    limit = max(1, min(limit, 100))  # Entre 1 e 100
+    query = text("SELECT * FROM vw_top_clientes LIMIT :limit")
+    result = db.execute(query, {"limit": limit}).fetchall()
     return [dict(row._mapping) for row in result]
 
 @router.get("/agendamentos-resumo")

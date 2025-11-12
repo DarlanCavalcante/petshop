@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { PawPrint, User, Lock, Building2, ArrowRight } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
+import { authAPI, APIError } from '@/lib/api';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -16,33 +17,23 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const formData = new URLSearchParams();
-      formData.append('username', username);
-      formData.append('password', password);
-
-      const response = await fetch('http://localhost:8000/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'X-Empresa': empresa,
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error('Login ou senha incorretos');
-      }
-
-      const data = await response.json();
-      localStorage.setItem('token', data.access_token);
-      localStorage.setItem('empresa', empresa);
+      const data = await authAPI.login(username, password, empresa);
+      
+      // Usar sessionStorage (mais seguro que localStorage)
+      // Dados são apagados ao fechar o navegador
+      sessionStorage.setItem('token', data.access_token);
+      sessionStorage.setItem('empresa', empresa);
       
       toast.success('Login realizado com sucesso!');
       setTimeout(() => {
         window.location.href = '/dashboard';
       }, 500);
     } catch (err: any) {
-      toast.error(err.message || 'Erro ao fazer login');
+      if (err instanceof APIError) {
+        toast.error(err.message);
+      } else {
+        toast.error('Erro ao fazer login. Tente novamente.');
+      }
       setLoading(false);
     }
   };

@@ -1,12 +1,11 @@
-version: '3.8'
 
 services:
   mariadb:
-    image: mariadb:11.4
+    image: mariadb:11
     container_name: petshop-mariadb
     restart: unless-stopped
     environment:
-      MARIADB_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-SenhaRoot123}
+      MARIADB_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MARIADB_CHARACTER_SET_SERVER: utf8mb4
       MARIADB_COLLATION_SERVER: utf8mb4_unicode_ci
     ports:
@@ -16,11 +15,11 @@ services:
       - ./api/scripts:/docker-entrypoint-initdb.d:ro
     networks:
       - petshop-network
-    healthcheck:
-      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    # healthcheck:
+    #   test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+    #   interval: 10s
+    #   timeout: 5s
+    #   retries: 5
 
   api:
     build:
@@ -29,11 +28,10 @@ services:
     container_name: petshop-api
     restart: unless-stopped
     depends_on:
-      mariadb:
-        condition: service_healthy
+      - mariadb
     environment:
-      DATABASE_URL: mysql+pymysql://root:${MYSQL_ROOT_PASSWORD:-SenhaRoot123}@mariadb:3306/petshop_empresa_teste
-      SECRET_KEY: ${SECRET_KEY:-mudar-em-producao-gerar-com-openssl-rand-hex-32}
+      DATABASE_URL: mysql+pymysql://root:${MYSQL_ROOT_PASSWORD}@mariadb:3306/petshop_empresa_teste
+      SECRET_KEY: ${SECRET_KEY}
     ports:
       - "8000:8000"
     volumes:

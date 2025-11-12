@@ -14,6 +14,23 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = False
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # Validar SECRET_KEY
+        weak_keys = [
+            'sua-chave-secreta-super-segura-mude-isso-em-producao',
+            'mudar-em-producao-gerar-com-openssl-rand-hex-32',
+            'secret',
+            'changeme'
+        ]
+        if self.secret_key.lower() in weak_keys or len(self.secret_key) < 32:
+            raise ValueError(
+                "⚠️ ERRO DE SEGURANÇA: SECRET_KEY inválida!\n"
+                "Gere uma chave segura com:\n"
+                "  openssl rand -hex 32\n"
+                "  ou PowerShell: [Convert]::ToBase64String([byte[]](1..32|%{Get-Random -Max 256}))"
+            )
 
     @property
     def cors_origins_list(self) -> list:
