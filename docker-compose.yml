@@ -1,0 +1,60 @@
+version: '3.8'
+services:
+  mariadb:
+    image: mariadb:11.3
+    container_name: petshop-mariadb
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: petshop
+      MYSQL_USER: petshopuser
+      MYSQL_PASSWORD: petshoppass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+
+  api:
+    build:
+      context: ./api
+    container_name: petshop-api
+    restart: always
+    environment:
+      DB_HOST: mariadb
+      DB_USER: petshopuser
+      DB_PASSWORD: petshoppass
+      DB_NAME: petshop
+    ports:
+      - "4000:4000"
+    depends_on:
+      - mariadb
+
+  frontend:
+    build:
+      context: ./web
+    container_name: petshop-frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    environment:
+      NEXT_PUBLIC_API_URL: http://api:4000
+    volumes:
+      - ./web/public/assets:/app/public/assets
+
+  tunnel:
+    image: wernight/ngrok
+    container_name: petshop-tunnel
+    restart: always
+    environment:
+      NGROK_AUTHTOKEN: SEU_NGROK_TOKEN
+      NGROK_PORT: "3000"
+    depends_on:
+      - frontend
+    ports:
+      - "4040:4040" # Painel do ngrok
+      - "80:80"     # Exemplo de exposição
+
+volumes:
+  mariadb_data:
