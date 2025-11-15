@@ -1,35 +1,7 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useKpisData } from '@/lib/useKpisData';
 
-export default function KpisPage() {
-  const [empresa, setEmpresa] = useState<string | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [vendasPorFuncionario, setVendasPorFuncionario] = useState<any[]>([]);
-  const [produtosMaisVendidos, setProdutosMaisVendidos] = useState<any[]>([]);
-  const [receitaDiaria, setReceitaDiaria] = useState<any[]>([]);
-
-  useEffect(() => {
-    const t = localStorage.getItem("token");
-    const e = localStorage.getItem("empresa") || "teste";
-    setToken(t); setEmpresa(e);
-    async function load() {
-      if (!t) { setLoading(false); return; }
-      try {
-        const base = "http://127.0.0.1:8000";
-        const headers = { "Authorization": `Bearer ${t}`, "X-Empresa": e };
-        const v1 = await fetch(`${base}/kpis/vendas-por-funcionario`, { headers });
-        if (v1.ok) setVendasPorFuncionario(await v1.json());
-        const v2 = await fetch(`${base}/kpis/produtos-mais-vendidos`, { headers });
-        if (v2.ok) setProdutosMaisVendidos(await v2.json());
-        const v3 = await fetch(`${base}/kpis/receita-diaria`, { headers });
-        if (v3.ok) setReceitaDiaria(await v3.json());
-      } catch (err: any) { setError(err.message); }
-      finally { setLoading(false); }
-    }
-    load();
-  }, []);
+  const { vendasPorFuncionario, produtosMaisVendidos, receitaDiaria, loading, error } = useKpisData();
 
   return (
     <div className="p-8 max-w-5xl mx-auto">

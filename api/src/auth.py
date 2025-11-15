@@ -7,7 +7,7 @@ from fastapi.security import OAuth2PasswordBearer
 from src.config import get_settings
 
 settings = get_settings()
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -56,8 +56,8 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
         "login": payload.get("sub"),
         "nome": payload.get("nome"),
         "cargo": payload.get("cargo"),
-        "empresa_id": payload.get("empresa_id"),
-        "empresa_nome": payload.get("empresa_nome"),
-        "is_superadmin": payload.get("cargo") == "admin" and payload.get("empresa_id") == 1
+        "empresa_id": payload.get("empresa_id") or (1 if payload.get("empresa") == "teste" else None),  # Compatibilidade
+        "empresa_nome": payload.get("empresa"),
+        "is_superadmin": payload.get("cargo") == "admin" and (payload.get("empresa_id") == 1 or payload.get("empresa") == "teste")
     }
 

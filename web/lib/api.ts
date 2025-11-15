@@ -78,11 +78,6 @@ class APIClient {
   private async handleResponse<T>(response: Response): Promise<T> {
     // Token expirado ou inválido
     if (response.status === 401) {
-      if (typeof window !== 'undefined') {
-        sessionStorage.removeItem('token');
-        sessionStorage.removeItem('empresa');
-        window.location.href = '/login';
-      }
       throw new APIError(401, 'Sessão expirada. Faça login novamente.');
     }
 

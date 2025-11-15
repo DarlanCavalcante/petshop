@@ -1,145 +1,40 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Package, Users, Calendar, ArrowRight, ArrowUp, ArrowDown, ChevronUp, ChevronDown } from 'lucide-react';
+import { ShoppingCart, Package, Calendar, ArrowUp, ArrowDown } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { toast, Toaster } from 'react-hot-toast';
 import AppLayout from '@/components/AppLayout';
-import { API_URL } from '@/lib/config';
+import ProtectedRoute from '@/components/ProtectedRoute';
+import { useDashboardData } from '@/lib/useDashboardData';
 
-interface KPI {
-  title: string;
-  value: string;
-  change: number;
-  icon: any;
-  color: string;
+
+
+
+/**
+ * Página principal do dashboard.
+ * Protegida por autenticação.
+ *
+ * @returns {JSX.Element} Página do dashboard protegida.
+ */
+export default function DashboardPage() {
+  return (
+    <ProtectedRoute>
+      <DashboardContent />
+    </ProtectedRoute>
+  );
 }
 
-const COLORS = ['#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981'];
 
-// Dados de exemplo caso a API não retorne
-const EXEMPLO_RECEITA_DIARIA = [
-  { data: '01/11', valor: 1200 },
-  { data: '02/11', valor: 1800 },
-  { data: '03/11', valor: 1500 },
-  { data: '04/11', valor: 2100 },
-  { data: '05/11', valor: 1900 },
-  { data: '06/11', valor: 2400 },
-  { data: '07/11', valor: 2200 },
-];
-
-const EXEMPLO_PRODUTOS_VENDIDOS = [
-  { nome: 'Ração Premium', vendas: 45 },
-  { nome: 'Shampoo Pet', vendas: 32 },
-  { nome: 'Coleira', vendas: 28 },
-  { nome: 'Brinquedo', vendas: 25 },
-  { nome: 'Antipulgas', vendas: 22 },
-];
-
-export default function DashboardPage() {
+/**
+ * Conteúdo principal do dashboard.
+ * Busca dados de KPIs, gráficos e ações rápidas.
+ *
+ * @returns {JSX.Element} Conteúdo do dashboard.
+ */
+function DashboardContent() {
   const router = useRouter();
-  const [kpis, setKpis] = useState<KPI[]>([]);
-  const [receitaDiaria, setReceitaDiaria] = useState<any[]>(EXEMPLO_RECEITA_DIARIA);
-  const [produtosMaisVendidos, setProdutosMaisVendidos] = useState<any[]>(EXEMPLO_PRODUTOS_VENDIDOS);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
-
-  const loadDashboardData = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const empresa = localStorage.getItem('empresa');
-
-      if (!token || !empresa) {
-        window.location.href = '/login';
-        return;
-      }
-
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'X-Empresa': empresa
-      };
-
-      // Buscar receita diária (não bloqueia se falhar)
-      try {
-        const receitaRes = await fetch(`${API_URL}/kpis/receita-diaria`, { 
-          headers,
-          mode: 'cors'
-        });
-        if (receitaRes.ok) {
-          const data = await receitaRes.json();
-          setReceitaDiaria(data.slice(0, 7)); // Últimos 7 dias
-        }
-      } catch (err) {
-        console.warn('Não foi possível carregar receita diária:', err);
-      }
-
-      // Buscar produtos mais vendidos (não bloqueia se falhar)
-      try {
-        const produtosRes = await fetch(`${API_URL}/kpis/produtos-mais-vendidos`, { 
-          headers,
-          mode: 'cors'
-        });
-        if (produtosRes.ok) {
-          const data = await produtosRes.json();
-          setProdutosMaisVendidos(data.slice(0, 5));
-        }
-      } catch (err) {
-        console.warn('Não foi possível carregar produtos mais vendidos:', err);
-      }
-
-      // KPIs simulados (você pode criar endpoints específicos)
-      setKpis([
-        {
-          title: 'Receita Mensal',
-          value: 'R$ 45.231',
-          change: 12.5,
-          icon: DollarSign,
-          color: 'from-green-500 to-emerald-600'
-        },
-        {
-          title: 'Vendas Hoje',
-          value: '23',
-          change: 8.2,
-          icon: TrendingUp,
-          color: 'from-blue-500 to-cyan-600'
-        },
-        {
-          title: 'Produtos Ativos',
-          value: '156',
-          change: -2.4,
-          icon: Package,
-          color: 'from-purple-500 to-pink-600'
-        },
-        {
-          title: 'Clientes Ativos',
-          value: '842',
-          change: 15.3,
-          icon: Users,
-          color: 'from-orange-500 to-red-600'
-        },
-        {
-          title: 'Agendamentos',
-          value: '12',
-          change: 5.1,
-          icon: Calendar,
-          color: 'from-indigo-500 to-purple-600'
-        }
-      ]);
-
-      setLoading(false);
-      toast.success('Dashboard carregado!');
-    } catch (error: any) {
-      console.error('Erro ao carregar dashboard:', error);
-      console.error('Stack:', error.stack);
-      toast.error('Erro de conexão com a API');
-      setLoading(false);
-    }
-  };
+  const { kpis, receitaDiaria, produtosMaisVendidos, loading } = useDashboardData();
 
   if (loading) {
     return (
@@ -274,46 +169,29 @@ export default function DashboardPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-6"
+          className="flex flex-wrap gap-4 justify-center md:justify-start"
         >
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+          <button
             onClick={() => router.push('/venda')}
-            className="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all"
+            className="flex items-center gap-3 px-6 py-4 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold shadow-lg hover:scale-105 hover:shadow-xl transition-all focus:outline-none focus:ring-2 focus:ring-blue-400"
+            aria-label="Nova Venda"
           >
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-lg font-bold">Nova Venda</h3>
-              <ShoppingCart className="w-6 h-6" />
-            </div>
-            <p className="text-sm opacity-90">Registrar nova venda no sistema</p>
-          </motion.button>
-          
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            <ShoppingCart className="w-6 h-6" /> Nova Venda
+          </button>
+          <button
             onClick={() => router.push('/agendamentos')}
-            className="bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all"
+            className="flex items-center gap-3 px-6 py-4 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold shadow-lg hover:scale-105 hover:shadow-xl transition-all focus:outline-none focus:ring-2 focus:ring-green-400"
+            aria-label="Novo Agendamento"
           >
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-lg font-bold">Novo Agendamento</h3>
-              <Calendar className="w-6 h-6" />
-            </div>
-            <p className="text-sm opacity-90">Agendar serviço para cliente</p>
-          </motion.button>
-          
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            <Calendar className="w-6 h-6" /> Novo Agendamento
+          </button>
+          <button
             onClick={() => router.push('/produtos')}
-            className="bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all"
+            className="flex items-center gap-3 px-6 py-4 rounded-xl bg-gradient-to-r from-orange-500 to-red-600 text-white font-semibold shadow-lg hover:scale-105 hover:shadow-xl transition-all focus:outline-none focus:ring-2 focus:ring-orange-400"
+            aria-label="Cadastrar Produto"
           >
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-lg font-bold">Cadastrar Produto</h3>
-              <Package className="w-6 h-6" />
-            </div>
-            <p className="text-sm opacity-90">Adicionar produto ao estoque</p>
-          </motion.button>
+            <Package className="w-6 h-6" /> Cadastrar Produto
+          </button>
         </motion.div>
       </div>
     </AppLayout>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import UserMenu from '@/components/UserMenu';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,11 +24,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="pt">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <header className="w-full flex justify-end items-center px-8 py-4 border-b border-gray-200 bg-white/80 sticky top-0 z-50">
+          <UserMenu />
+        </header>
+        <main>{children}</main>
       </body>
     </html>
   );

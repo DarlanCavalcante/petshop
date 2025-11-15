@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 
 from src.config import get_settings
 from src.database import get_engine_for_empresa
-from src.routes import auth, clientes, vendas, agendamentos, kpis, produtos, servicos, pacotes
+from src.routes import auth, clientes, vendas, agendamentos, kpis, produtos, servicos, pacotes, empresas
 from src.logger import setup_logger, mask_sensitive_data
 from src.middleware import (
     SecurityHeadersMiddleware,
@@ -84,6 +84,7 @@ app.include_router(kpis.router)
 app.include_router(produtos.router)
 app.include_router(servicos.router)
 app.include_router(pacotes.router)
+app.include_router(empresas.router)
 
 @app.get("/")
 @limiter.limit("10/minute")

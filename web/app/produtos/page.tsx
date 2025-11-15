@@ -42,8 +42,8 @@ export default function ProdutosPage() {
   const loadProdutos = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const empresa = localStorage.getItem('empresa') || 'teste';
+      const token = sessionStorage.getItem('token');
+      const empresa = sessionStorage.getItem('empresa') || 'teste';
       
       const response = await fetch(`${API_URL}/produtos`, {
         headers: {
@@ -98,8 +98,8 @@ export default function ProdutosPage() {
     if (!selectedProduto) return;
     
     try {
-      const token = localStorage.getItem('token');
-      const empresa = localStorage.getItem('empresa') || 'teste';
+      const token = sessionStorage.getItem('token');
+      const empresa = sessionStorage.getItem('empresa') || 'teste';
       
       // Aqui você pode adicionar endpoint de delete quando estiver pronto
       toast.success(`Produto ${selectedProduto.nome} removido!`);
@@ -115,8 +115,8 @@ export default function ProdutosPage() {
     e.preventDefault();
     
     try {
-      const token = localStorage.getItem('token');
-      const empresa = localStorage.getItem('empresa') || 'teste';
+      const token = sessionStorage.getItem('token');
+      const empresa = sessionStorage.getItem('empresa') || 'teste';
       
       const produtoData = {
         nome: newProdutoForm.nome,

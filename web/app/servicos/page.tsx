@@ -1,153 +1,24 @@
+export default function Page() {
+  // ...todo o conteúdo do arquivo original, incluindo hooks, funções e JSX...
+}
 "use client";
-import { useEffect, useState } from 'react';
 import AppLayout from '@/components/AppLayout';
-import { API_URL } from '@/lib/config';
 import { motion } from 'framer-motion';
 import { Plus, Briefcase, Pencil, ToggleLeft, ToggleRight, X } from 'lucide-react';
-import { toast, Toaster } from 'react-hot-toast';
+import { Toaster } from 'react-hot-toast';
+import { useServicosData } from '@/lib/useServicosData';
 
-interface Servico {
-  id_servico: number;
-  nome: string;
-  descricao: string;
-  preco_base: string; // vem como string do backend
-  duracao_padrao: number | null; // duração em minutos
-  ativo: number; // 1 ou 0
-  created_at: string;
-}
 
-export default function ServicosPage() {
-  const [servicos, setServicos] = useState<Servico[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [nome, setNome] = useState('');
-  const [descricao, setDescricao] = useState('');
-  const [preco, setPreco] = useState('');
-  const [duracao, setDuracao] = useState('');
-  const [showModal, setShowModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [editing, setEditing] = useState<Servico | null>(null);
-  const [editNome, setEditNome] = useState('');
-  const [editDescricao, setEditDescricao] = useState('');
-  const [editPreco, setEditPreco] = useState('');
-  const [editDuracao, setEditDuracao] = useState('');
-  const [token, setToken] = useState<string | null>(null);
-  const [empresa, setEmpresa] = useState<string>('');
 
-  useEffect(() => {
-    setToken(localStorage.getItem('token'));
-    setEmpresa(localStorage.getItem('empresa') || 'teste');
-    load();
-  }, []);
 
-  async function load() {
-    try {
-      setLoading(true);
-      const t = localStorage.getItem('token');
-      const e = localStorage.getItem('empresa') || 'teste';
-      const res = await fetch(`${API_URL}/servicos`, {
-        headers: { 'Authorization': `Bearer ${t}`, 'X-Empresa': e },
-        mode: 'cors'
-      });
-      if (!res.ok) throw new Error('Falha ao carregar serviços');
-      const data = await res.json();
-      setServicos(data);
-    } catch (err: any) {
-      toast.error(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function criarServico() {
-    try {
-      if (!token) throw new Error('Sem token');
-      const payload: any = { 
-        nome, 
-        descricao, 
-        preco_base: parseFloat(preco), 
-        ativo: true 
-      };
-      if (duracao) payload.duracao_padrao = parseInt(duracao);
-      
-      const res = await fetch(`${API_URL}/servicos`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'X-Empresa': empresa
-        },
-        body: JSON.stringify(payload),
-        mode: 'cors'
-      });
-      if (!res.ok) throw new Error(await res.text());
-      toast.success('Serviço criado');
-      setShowModal(false);
-      setNome(''); setDescricao(''); setPreco(''); setDuracao('');
-      load();
-    } catch (err: any) {
-      toast.error(err.message);
-    }
-  }
-
-  async function toggleAtivo(s: Servico) {
-    try {
-      const t = localStorage.getItem('token');
-      const e = localStorage.getItem('empresa') || 'teste';
-      const res = await fetch(`${API_URL}/servicos/${s.id_servico}/ativo`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${t}`, 'X-Empresa': e },
-        body: JSON.stringify({ ativo: s.ativo !== 1 }),
-        mode: 'cors'
-      });
-      if (!res.ok) throw new Error(await res.text());
-      toast.success('Status atualizado');
-      load();
-    } catch (err: any) {
-      toast.error(err.message);
-    }
-  }
-
-  function abrirEdicao(s: Servico) {
-    setEditing(s);
-    setEditNome(s.nome || '');
-    setEditDescricao(s.descricao || '');
-    setEditPreco(String(Number(s.preco_base).toFixed(2)));
-    setEditDuracao(s.duracao_padrao ? String(s.duracao_padrao) : '');
-    setShowEditModal(true);
-  }
-
-  async function salvarEdicao() {
-    try {
-      if (!editing) return;
-      const t = localStorage.getItem('token');
-      const e = localStorage.getItem('empresa') || 'teste';
-      const payload: any = {};
-      if (editNome !== editing.nome) payload.nome = editNome;
-      if (editDescricao !== (editing.descricao || '')) payload.descricao = editDescricao;
-      if (Number(editPreco) !== Number(editing.preco_base)) payload.preco_base = Number(editPreco);
-      const newDur = editDuracao ? parseInt(editDuracao) : null;
-      if (newDur !== editing.duracao_padrao) payload.duracao_padrao = newDur;
-      
-      if (Object.keys(payload).length === 0) {
-        toast('Nada para atualizar');
-        setShowEditModal(false);
-        return;
-      }
-      const res = await fetch(`${API_URL}/servicos/${editing.id_servico}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${t}`, 'X-Empresa': e },
-        body: JSON.stringify(payload),
-        mode: 'cors'
-      });
-      if (!res.ok) throw new Error(await res.text());
-      toast.success('Serviço atualizado');
-      setShowEditModal(false);
-      setEditing(null);
-      await load();
-    } catch (err: any) {
-      toast.error(err.message || 'Erro ao atualizar');
-    }
-  }
+  const {
+    servicos, setServicos, loading, setLoading,
+    nome, setNome, descricao, setDescricao, preco, setPreco, duracao, setDuracao,
+    showModal, setShowModal, showEditModal, setShowEditModal,
+    editing, setEditing, editNome, setEditNome, editDescricao, setEditDescricao, editPreco, setEditPreco, editDuracao, setEditDuracao,
+    token, setToken, empresa, setEmpresa,
+    load, criarServico, toggleAtivo, abrirEdicao, salvarEdicao
+  } = useServicosData();
 
   return (
     <AppLayout>

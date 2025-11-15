@@ -5,12 +5,14 @@ import { motion } from 'framer-motion';
 import { PawPrint, User, Lock, Building2, ArrowRight } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
 import { authAPI, APIError } from '@/lib/api';
+import { useRouter } from 'next/navigation'; // <-- 1. Importação Adicionada
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [empresa, setEmpresa] = useState('teste');
   const [loading, setLoading] = useState(false);
+  const router = useRouter(); // <-- 2. Inicialização do Hook Adicionada
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,7 +28,13 @@ export default function LoginPage() {
       
       toast.success('Login realizado com sucesso!');
       setTimeout(() => {
-        window.location.href = '/dashboard';
+        const redirectPath = sessionStorage.getItem('redirectPath');
+        if (redirectPath) {
+          sessionStorage.removeItem('redirectPath');
+          router.push(redirectPath); // <-- 3. CORRIGIDO: Uso de router.push
+        } else {
+          router.push('/dashboard'); // <-- 4. CORRIGIDO: Uso de router.push
+        }
       }, 500);
     } catch (err: any) {
       if (err instanceof APIError) {

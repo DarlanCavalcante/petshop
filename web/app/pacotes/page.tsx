@@ -1,225 +1,99 @@
+export default function Page() {
+  // ...todo o conteúdo do arquivo original, incluindo hooks, funções e JSX...
+}
 "use client";
 
-import { useEffect, useState } from "react";
+
 import { motion } from 'framer-motion';
-import { Package, Plus, Edit, Trash2, Calendar, Clock, DollarSign, CheckCircle, XCircle } from 'lucide-react';
-import { toast, Toaster } from 'react-hot-toast';
+import { Package, Plus, Edit, Calendar, Clock, DollarSign, CheckCircle, XCircle } from 'lucide-react';
+import { Toaster } from 'react-hot-toast';
 import AppLayout from '@/components/AppLayout';
-import { API_URL } from '@/lib/config';
+import { usePackagesData } from '@/lib/usePackagesData';
 
-type Pacote = {
-  id_pacote: number;
-  nome: string;
-  descricao: string | null;
-  tipo: 'combo' | 'creditos';
-  preco_base: number;
-  validade_dias: number | null;
-  max_usos: number | null;
-  ativo: boolean;
-  data_criacao: string;
-  servicos: Array<{
-    id_servico: number;
-    nome: string;
-    preco: number;
-    quantidade: number;
-  }>;
-};
 
-type Servico = {
-  id_servico: number;
-  nome: string;
-  preco_base: number;
-};
+const {
+  pacotes, servicos, loading, criarPacote, editarPacote, helpers
+} = usePackagesData();
+const [showModal, setShowModal] = useState(false);
+const [showEditModal, setShowEditModal] = useState(false);
+const [editing, setEditing] = useState<any>(null);
+// Os campos de formulário podem ser mantidos aqui, mas a lógica de CRUD e helpers deve ser do hook
 
-export default function PacotesPage() {
-  const [pacotes, setPacotes] = useState<Pacote[]>([]);
-  const [servicos, setServicos] = useState<Servico[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [editing, setEditing] = useState<Pacote | null>(null);
 
-  // Form fields (criar)
-  const [nome, setNome] = useState('');
-  const [descricao, setDescricao] = useState('');
-  const [tipo, setTipo] = useState<'combo' | 'creditos'>('combo');
-  const [preco, setPreco] = useState('');
-  const [validade, setValidade] = useState('');
-  const [maxUsos, setMaxUsos] = useState('');
-  const [servicosSelecionados, setServicosSelecionados] = useState<number[]>([]);
 
-  // Form fields (editar)
-  const [editNome, setEditNome] = useState('');
-  const [editDescricao, setEditDescricao] = useState('');
-  const [editPreco, setEditPreco] = useState('');
-  const [editValidade, setEditValidade] = useState('');
-  const [editMaxUsos, setEditMaxUsos] = useState('');
-  const [editServicosSelecionados, setEditServicosSelecionados] = useState<number[]>([]);
 
-  useEffect(() => {
-    carregarDados();
-  }, []);
-
-  const carregarDados = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const empresa = localStorage.getItem("empresa") || "teste";
-
-      if (!token) {
-        window.location.href = '/login';
-        return;
-      }
-
-      const headers = {
-        "Authorization": `Bearer ${token}`,
-        "X-Empresa": empresa
-      };
-
-      // Carregar pacotes
-      const pacotesRes = await fetch(`${API_URL}/pacotes`, { headers, mode: 'cors' });
-      if (pacotesRes.ok) {
-        setPacotes(await pacotesRes.json());
-      }
-
-      // Carregar serviços
-      const servicosRes = await fetch(`${API_URL}/servicos`, { headers, mode: 'cors' });
-      if (servicosRes.ok) {
-        setServicos(await servicosRes.json());
-      }
-
-      setLoading(false);
-    } catch (error: any) {
-      console.error('Erro ao carregar dados:', error);
-      toast.error('Erro ao carregar dados');
-      setLoading(false);
+  // Função para criar pacote usando o hook
+  const handleCriarPacote = async () => {
+    if (!nome || !preco || servicosSelecionados.length === 0) {
+      alert("Preencha nome, preço e selecione ao menos 1 serviço");
+      return;
     }
+    if (tipo === 'creditos' && (!validade || !maxUsos)) {
+      alert("Pacotes tipo créditos precisam de validade e quantidade de usos");
+      return;
+    }
+    const payload: any = {
+      nome,
+      descricao: descricao || null,
+      tipo,
+      preco_base: parseFloat(preco),
+      servicos_ids: servicosSelecionados,
+      ativo: true
+    };
+    if (tipo === 'creditos') {
+      payload.validade_dias = parseInt(validade);
+      payload.max_usos = parseInt(maxUsos);
+    }
+    await criarPacote(payload);
+    setNome('');
+    setDescricao('');
+    setTipo('combo');
+    setPreco('');
+    setValidade('');
+    setMaxUsos('');
+    setServicosSelecionados([]);
+    setShowModal(false);
   };
 
-  const criarPacote = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const empresa = localStorage.getItem("empresa") || "teste";
 
-      if (!token) throw new Error("Faça login");
-      if (!nome || !preco || servicosSelecionados.length === 0) {
-        toast.error("Preencha nome, preço e selecione ao menos 1 serviço");
-        return;
-      }
-
-      if (tipo === 'creditos' && (!validade || !maxUsos)) {
-        toast.error("Pacotes tipo créditos precisam de validade e quantidade de usos");
-        return;
-      }
-
-      const payload: any = {
-        nome,
-        descricao: descricao || null,
-        tipo,
-        preco_base: parseFloat(preco),
-        servicos_ids: servicosSelecionados,
-        ativo: true
-      };
-
-      if (tipo === 'creditos') {
-        payload.validade_dias = parseInt(validade);
-        payload.max_usos = parseInt(maxUsos);
-      }
-
-      const res = await fetch(`${API_URL}/pacotes`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-          "X-Empresa": empresa
-        },
-        body: JSON.stringify(payload),
-        mode: 'cors'
-      });
-
-      if (!res.ok) throw new Error(await res.text());
-
-      const result = await res.json();
-      toast.success(`Pacote "${result.nome}" criado com sucesso!`);
-
-      // Limpar e recarregar
-      setNome('');
-      setDescricao('');
-      setTipo('combo');
-      setPreco('');
-      setValidade('');
-      setMaxUsos('');
-      setServicosSelecionados([]);
-      setShowModal(false);
-      carregarDados();
-    } catch (error: any) {
-      toast.error(`Erro ao criar pacote: ${error.message}`);
-    }
-  };
-
-  const abrirEdicao = (p: Pacote) => {
+  const abrirEdicao = (p: any) => {
     setEditing(p);
     setEditNome(p.nome);
     setEditDescricao(p.descricao || '');
     setEditPreco(String(p.preco_base));
     setEditValidade(p.validade_dias ? String(p.validade_dias) : '');
     setEditMaxUsos(p.max_usos ? String(p.max_usos) : '');
-    setEditServicosSelecionados(p.servicos.map(s => s.id_servico));
+    setEditServicosSelecionados(p.servicos.map((s: any) => s.id_servico));
     setShowEditModal(true);
   };
 
+
   const salvarEdicao = async () => {
     if (!editing) return;
-
-    try {
-      const token = localStorage.getItem("token");
-      const empresa = localStorage.getItem("empresa") || "teste";
-
-      const payload: any = {};
-
-      if (editNome !== editing.nome) payload.nome = editNome;
-      if (editDescricao !== (editing.descricao || '')) payload.descricao = editDescricao || null;
-      if (parseFloat(editPreco) !== editing.preco_base) payload.preco_base = parseFloat(editPreco);
-      
-      if (editing.tipo === 'creditos') {
-        const newValidade = parseInt(editValidade);
-        const newMaxUsos = parseInt(editMaxUsos);
-        if (newValidade !== editing.validade_dias) payload.validade_dias = newValidade;
-        if (newMaxUsos !== editing.max_usos) payload.max_usos = newMaxUsos;
-      }
-
-      // Verificar se serviços mudaram
-      const oldIds = editing.servicos.map(s => s.id_servico).sort().join(',');
-      const newIds = editServicosSelecionados.sort().join(',');
-      if (oldIds !== newIds) {
-        payload.servicos_ids = editServicosSelecionados;
-      }
-
-      if (Object.keys(payload).length === 0) {
-  toast("Nenhuma alteração detectada", { icon: 'ℹ️' });
-        setShowEditModal(false);
-        return;
-      }
-
-      const res = await fetch(`${API_URL}/pacotes/${editing.id_pacote}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-          "X-Empresa": empresa
-        },
-        body: JSON.stringify(payload),
-        mode: 'cors'
-      });
-
-      if (!res.ok) throw new Error(await res.text());
-
-      toast.success("Pacote atualizado!");
-      setShowEditModal(false);
-      carregarDados();
-    } catch (error: any) {
-      toast.error(`Erro ao atualizar: ${error.message}`);
+    const payload: any = {};
+    if (editNome !== editing.nome) payload.nome = editNome;
+    if (editDescricao !== (editing.descricao || '')) payload.descricao = editDescricao || null;
+    if (parseFloat(editPreco) !== editing.preco_base) payload.preco_base = parseFloat(editPreco);
+    if (editing.tipo === 'creditos') {
+      const newValidade = parseInt(editValidade);
+      const newMaxUsos = parseInt(editMaxUsos);
+      if (newValidade !== editing.validade_dias) payload.validade_dias = newValidade;
+      if (newMaxUsos !== editing.max_usos) payload.max_usos = newMaxUsos;
     }
+    const oldIds = editing.servicos.map((s: any) => s.id_servico).sort().join(',');
+    const newIds = editServicosSelecionados.sort().join(',');
+    if (oldIds !== newIds) {
+      payload.servicos_ids = editServicosSelecionados;
+    }
+    if (Object.keys(payload).length === 0) {
+      alert("Nenhuma alteração detectada");
+      setShowEditModal(false);
+      return;
+    }
+    await editarPacote(editing.id_pacote, payload);
+    setShowEditModal(false);
   };
+
 
   const toggleServico = (id: number, lista: number[], setter: (ids: number[]) => void) => {
     if (lista.includes(id)) {
@@ -229,12 +103,7 @@ export default function PacotesPage() {
     }
   };
 
-  const calcularTotal = (ids: number[]) => {
-    return ids.reduce((sum, id) => {
-      const s = servicos.find(x => x.id_servico === id);
-      return sum + (s?.preco_base || 0);
-    }, 0);
-  };
+  const calcularTotal = helpers.calcularTotal;
 
   if (loading) return <AppLayout><div className="p-8">Carregando...</div></AppLayout>;
 

@@ -57,6 +57,41 @@ def _load_databases_map() -> Dict[str, str]:
     return _DATABASES_MAP
 
 
+def reload_databases_map():
+    """Força recarregamento do mapa de bancos"""
+    global _DATABASES_MAP
+    _DATABASES_MAP = None
+    return _load_databases_map()
+
+
+def update_databases_map(empresa_code: str, db_url: str):
+    """Atualiza o mapa de bancos e salva no arquivo"""
+    # Recarregar mapa atual
+    databases = reload_databases_map()
+
+    # Adicionar novo banco
+    databases[empresa_code] = db_url
+
+    # Salvar no arquivo
+    candidates = [
+        os.path.join(os.path.dirname(__file__), "..", "databases.json"),
+        os.path.join(os.getcwd(), "databases.json"),
+    ]
+
+    for path in candidates:
+        try:
+            path = os.path.abspath(path)
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(databases, f, indent=2, ensure_ascii=False)
+            break
+        except Exception:
+            continue
+
+    # Limpar cache para forçar recarregamento
+    global _DATABASES_MAP
+    _DATABASES_MAP = None
+
+
 def _get_engine(db_url: str):
     return create_engine(
         db_url,
