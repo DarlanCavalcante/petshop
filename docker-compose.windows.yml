@@ -59,6 +59,17 @@ services:
     networks:
       - petshop-network
 
+  adminer:
+    image: adminer:latest
+    container_name: petshop-adminer
+    restart: unless-stopped
+    depends_on:
+      - mariadb
+    ports:
+      - "8080:8080"
+    networks:
+      - petshop-network
+
 volumes:
   mariadb_data:
     driver: local

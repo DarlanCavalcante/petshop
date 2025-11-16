@@ -43,6 +43,15 @@ services:
     volumes:
       - ./web/public/assets:/app/public/assets
 
+  adminer:
+    image: adminer:latest
+    container_name: petshop-adminer
+    restart: always
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mariadb
+
   tunnel:
     image: cloudflare/cloudflared:latest
     container_name: tunnel_docker
