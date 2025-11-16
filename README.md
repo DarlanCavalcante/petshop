@@ -17,6 +17,37 @@ API: http://127.0.0.1:8000 (docs em /docs)  |  Frontend: http://localhost:3000
 
 ---
 
+## Acesso Remoto Seguro
+
+### Cloudflare Tunnel (Recomendado)
+Para acesso seguro ao banco de dados em produção:
+
+- **Host:** `mysql.petshop.tech10cloud.com:3306`
+- **Usuário:** `petshopuser`
+- **Senha:** `AppPassword456!`
+- **Base:** `petshop_empresa_teste`
+
+### Acesso Local (Desenvolvimento):
+Para desenvolvimento local, o MySQL está disponível em:
+- **Host:** `localhost:3306`
+- **Usuário:** `petshopuser`
+- **Senha:** `AppPassword456!`
+- **Root (Administrador):** `D@rl@n34461011!`
+
+### SSH Tunnel (Opcional)
+Se precisar de SSH tunnel para acesso remoto:
+```bash
+ssh -L 3306:localhost:3306 -N user@your-server
+```
+Depois conecte em `localhost:3306`.
+
+**⚠️ Segurança:** O Cloudflare Tunnel é recomendado para produção pois não expõe o banco diretamente.
+
+### Script de Configuração
+Execute `./scripts/ssh-tunnel-setup.sh` para ver instruções detalhadas.
+
+---
+
 ## Petshop DB
 
 Infraestrutura de banco MySQL 8.4 com migrações Flyway, procedures de negócio, views de privacidade, backups automatizados e teste E2E.

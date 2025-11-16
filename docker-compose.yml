@@ -5,10 +5,10 @@ services:
     container_name: petshop-mariadb
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: petshop
       MYSQL_USER: petshopuser
-      MYSQL_PASSWORD: petshoppass
+      MYSQL_PASSWORD: ${MYSQL_APP_PASSWORD}
     ports:
       - "3306:3306"
     volumes:
@@ -22,7 +22,7 @@ services:
     environment:
       DB_HOST: mariadb
       DB_USER: petshopuser
-      DB_PASSWORD: petshoppass
+      DB_PASSWORD: ${MYSQL_APP_PASSWORD}
       DB_NAME: petshop
     ports:
       - "4000:4000"
