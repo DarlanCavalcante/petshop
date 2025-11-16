@@ -1,5 +1,5 @@
 -- V10: Dashboard de KPIs e views analíticas
-USE petshop;
+
 
 -- Vendas por funcionário (período configurável via WHERE)
 CREATE OR REPLACE VIEW vw_vendas_por_funcionario AS
@@ -15,7 +15,7 @@ SELECT
 FROM funcionarios f
 LEFT JOIN vendas v ON f.id_funcionario = v.id_funcionario 
     AND v.created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
-WHERE f.ativo = TRUE
+WHERE f.ativo = 1
 GROUP BY f.id_funcionario
 ORDER BY receita_total DESC;
 
@@ -41,7 +41,7 @@ LEFT JOIN itens_da_venda iv ON p.id_produto = iv.id_produto
 LEFT JOIN vendas v ON iv.id_venda = v.id_venda 
     AND v.data_hora_venda >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
 LEFT JOIN estoque e ON p.id_produto = e.id_produto
-WHERE p.ativo = TRUE
+WHERE p.ativo = 1
 GROUP BY p.id_produto
 ORDER BY quantidade_total_vendida DESC;
 
@@ -96,7 +96,7 @@ SELECT
     DATEDIFF(CURDATE(), MAX(v.data_hora_venda)) as dias_sem_comprar
 FROM clientes c
 LEFT JOIN vendas v ON c.id_cliente = v.id_cliente
-WHERE c.ativo = TRUE AND c.deleted_at IS NULL
+WHERE c.ativo = 1 AND c.deleted_at IS NULL
 GROUP BY c.id_cliente
 HAVING num_compras > 0
 ORDER BY receita_gerada DESC;
@@ -124,3 +124,4 @@ ORDER BY
     END;
 
 SELECT 'V10 dashboard KPIs aplicado' AS status;
+

@@ -1,76 +1,58 @@
-export default function Page() {
-  // ...todo o conteúdo do arquivo original, incluindo hooks, funções e JSX...
-}
 "use client";
 
-
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Package, Plus, Edit, Calendar, Clock, DollarSign, CheckCircle, XCircle } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import AppLayout from '@/components/AppLayout';
-import { usePackagesData } from '@/lib/usePackagesData';
+import { usePackagesData, Pacote } from '@/lib/usePackagesData';
+
+export default function PacotesPage() {
+  const {
+    pacotes, servicos, loading, criarPacote, editarPacote, helpers
+  } = usePackagesData();
+  const [showModal, setShowModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editing, setEditing] = useState<Pacote | null>(null);
+
+  // Estados para formulário de criação
+  const [nome, setNome] = useState('');
+  const [descricao, setDescricao] = useState('');
+  const [preco, setPreco] = useState('');
+  const [tipo, setTipo] = useState<'combo' | 'creditos'>('combo');
+  const [validade, setValidade] = useState('');
+  const [maxUsos, setMaxUsos] = useState('');
+  const [servicosSelecionados, setServicosSelecionados] = useState<number[]>([]);
+
+  // Estados para formulário de edição
+  const [editNome, setEditNome] = useState('');
+  const [editDescricao, setEditDescricao] = useState('');
+  const [editPreco, setEditPreco] = useState('');
+  const [editValidade, setEditValidade] = useState('');
+  const [editMaxUsos, setEditMaxUsos] = useState('');
+  const [editServicosSelecionados, setEditServicosSelecionados] = useState<number[]>([]);
 
 
-const {
-  pacotes, servicos, loading, criarPacote, editarPacote, helpers
-} = usePackagesData();
-const [showModal, setShowModal] = useState(false);
-const [showEditModal, setShowEditModal] = useState(false);
-const [editing, setEditing] = useState<any>(null);
-// Os campos de formulário podem ser mantidos aqui, mas a lógica de CRUD e helpers deve ser do hook
 
 
 
 
-  // Função para criar pacote usando o hook
-  const handleCriarPacote = async () => {
-    if (!nome || !preco || servicosSelecionados.length === 0) {
-      alert("Preencha nome, preço e selecione ao menos 1 serviço");
-      return;
-    }
-    if (tipo === 'creditos' && (!validade || !maxUsos)) {
-      alert("Pacotes tipo créditos precisam de validade e quantidade de usos");
-      return;
-    }
-    const payload: any = {
-      nome,
-      descricao: descricao || null,
-      tipo,
-      preco_base: parseFloat(preco),
-      servicos_ids: servicosSelecionados,
-      ativo: true
-    };
-    if (tipo === 'creditos') {
-      payload.validade_dias = parseInt(validade);
-      payload.max_usos = parseInt(maxUsos);
-    }
-    await criarPacote(payload);
-    setNome('');
-    setDescricao('');
-    setTipo('combo');
-    setPreco('');
-    setValidade('');
-    setMaxUsos('');
-    setServicosSelecionados([]);
-    setShowModal(false);
-  };
 
-
-  const abrirEdicao = (p: any) => {
+  const abrirEdicao = (p: Pacote) => {
     setEditing(p);
     setEditNome(p.nome);
     setEditDescricao(p.descricao || '');
     setEditPreco(String(p.preco_base));
     setEditValidade(p.validade_dias ? String(p.validade_dias) : '');
     setEditMaxUsos(p.max_usos ? String(p.max_usos) : '');
-    setEditServicosSelecionados(p.servicos.map((s: any) => s.id_servico));
+    setEditServicosSelecionados(p.servicos.map((s) => s.id_servico));
     setShowEditModal(true);
   };
 
 
   const salvarEdicao = async () => {
     if (!editing) return;
-    const payload: any = {};
+    const payload: Partial<Pacote> = {};
     if (editNome !== editing.nome) payload.nome = editNome;
     if (editDescricao !== (editing.descricao || '')) payload.descricao = editDescricao || null;
     if (parseFloat(editPreco) !== editing.preco_base) payload.preco_base = parseFloat(editPreco);
@@ -80,10 +62,10 @@ const [editing, setEditing] = useState<any>(null);
       if (newValidade !== editing.validade_dias) payload.validade_dias = newValidade;
       if (newMaxUsos !== editing.max_usos) payload.max_usos = newMaxUsos;
     }
-    const oldIds = editing.servicos.map((s: any) => s.id_servico).sort().join(',');
+    const oldIds = editing.servicos.map((s) => s.id_servico).sort().join(',');
     const newIds = editServicosSelecionados.sort().join(',');
     if (oldIds !== newIds) {
-      payload.servicos_ids = editServicosSelecionados;
+      (payload as any).servicos_ids = editServicosSelecionados;
     }
     if (Object.keys(payload).length === 0) {
       alert("Nenhuma alteração detectada");

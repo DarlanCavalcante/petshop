@@ -1,14 +1,15 @@
 -- V9: Procedure para registrar entradas de estoque com auditoria
-USE petshop;
 
-DELIMITER $$
-DROP PROCEDURE IF EXISTS registrar_entrada_estoque$$
+-- NOTA: Esta procedure est� em sintaxe MySQL. Para SQL Server, seria necess�rio reescrever completamente.
+-- Por enquanto, mantendo apenas para compatibilidade futura.
+
+DROP PROCEDURE IF EXISTS registrar_entrada_estoque;
 CREATE PROCEDURE registrar_entrada_estoque(
     IN p_id_produto INT,
     IN p_lote VARCHAR(50),
     IN p_quantidade INT,
     IN p_data_vencimento DATE,
-    IN p_tipo ENUM('Entrada','Compra','Devolução','Ajuste'),
+    IN p_tipo VARCHAR(20), -- Tipo: Entrada, Compra, Devolução, Ajuste
     IN p_motivo VARCHAR(100),
     IN p_id_funcionario INT,
     OUT p_id_estoque INT,
@@ -33,7 +34,7 @@ BEGIN
     END IF;
 
     -- Verifica se produto existe
-    IF NOT EXISTS (SELECT 1 FROM produtos WHERE id_produto = p_id_produto AND ativo = TRUE) THEN
+    IF NOT EXISTS (SELECT 1 FROM produtos WHERE id_produto = p_id_produto AND ativo = 1) THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Produto não encontrado ou inativo';
     END IF;
 
@@ -74,7 +75,8 @@ BEGIN
     );
 
     COMMIT;
-END$$
+END
 DELIMITER ;
 
 SELECT 'V9 procedure entrada estoque aplicada' AS status;
+

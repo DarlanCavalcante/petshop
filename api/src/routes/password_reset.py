@@ -1,13 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, status
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, validator
 from datetime import datetime, timedelta
 import secrets
-import os
+import hashlib
+from typing import Optional
 
 from src.database import get_db
-from src.auth import get_current_user
+from src.auth import get_current_user, get_password_hash
+
+router = APIRouter(prefix="/auth", tags=["Autenticação"])
 
 router = APIRouter(prefix="/auth", tags=["Autenticação"])
 
@@ -31,6 +34,7 @@ class MockEmailService:
         === E-MAIL DE RESET DE SENHA ===
         Para: {email}
         Assunto: Reset de Senha - Petshop SaaS
+        Data: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
         Você solicitou um reset de senha para sua conta.
 
@@ -56,33 +60,48 @@ async def forgot_password(
 ):
     """Solicitar reset de senha - envia e-mail com link de reset"""
 
-    # Verificar se o e-mail existe na base de dados
+    # Validar formato do email
+    if not request.email or "@" not in request.email:
+        raise HTTPException(status_code=400, detail="Email inválido")
+
+    # Verificar se o e-mail existe na base de dados (query otimizada)
     query = text("""
         SELECT u.id, u.email, u.nome
         FROM usuarios u
         WHERE u.email = :email AND u.ativo = TRUE
+        LIMIT 1
     """)
-    user = db.execute(query, {"email": request.email}).fetchone()
+    user = db.execute(query, {"email": request.email.strip().lower()}).fetchone()
 
     if not user:
         # Por segurança, não informar se o e-mail existe ou não
+        return {"message": "Se o e-mail estiver cadastrado, você receberá instruções para reset de senha."}
+
+    # Verificar se já existe um token ativo para este usuário
+    existing_token_query = text("""
+        SELECT COUNT(*) as token_count
+        FROM password_reset_tokens
+        WHERE user_id = :user_id AND used = FALSE AND expires_at > NOW()
+    """)
+    token_count = db.execute(existing_token_query, {"user_id": user[0]}).scalar()
+
+    if token_count > 0:
+        # Já existe token ativo, não criar outro
         return {"message": "Se o e-mail estiver cadastrado, você receberá instruções para reset de senha."}
 
     # Gerar token único para reset
     reset_token = secrets.token_urlsafe(32)
     expires_at = datetime.now() + timedelta(hours=1)  # Token válido por 1 hora
 
-    # Salvar token na base de dados (tabela temporária ou campo na tabela usuarios)
-    # Por simplicidade, vamos usar uma tabela de reset_tokens
+    # Salvar token na base de dados
     try:
-        # A tabela password_reset_tokens já foi criada pela migração
         # Inserir token
         db.execute(text("""
-            INSERT INTO password_reset_tokens (user_id, email, token, expires_at)
-            VALUES (:user_id, :email, :token, :expires_at)
+            INSERT INTO password_reset_tokens (user_id, email, token, expires_at, created_at)
+            VALUES (:user_id, :email, :token, :expires_at, NOW())
         """), {
             "user_id": user[0],
-            "email": request.email,
+            "email": request.email.strip().lower(),
             "token": reset_token,
             "expires_at": expires_at
         })
@@ -92,7 +111,7 @@ async def forgot_password(
         # Enviar e-mail em background
         background_tasks.add_task(
             MockEmailService.send_password_reset_email,
-            request.email,
+            request.email.strip().lower(),
             reset_token
         )
 
@@ -103,46 +122,42 @@ async def forgot_password(
     return {"message": "Se o e-mail estiver cadastrado, você receberá instruções para reset de senha."}
 
 @router.post("/reset-password")
-def reset_password(
+async def reset_password(
     request: ResetPasswordRequest,
     db: Session = Depends(get_db)
 ):
     """Confirmar reset de senha usando token"""
 
-    # Verificar se o token é válido
+    # Verificar se o token é válido e não expirou
     query = text("""
         SELECT prt.user_id, prt.expires_at, prt.used, u.email
         FROM password_reset_tokens prt
         JOIN usuarios u ON prt.user_id = u.id
-        WHERE prt.token = :token
+        WHERE prt.token = :token AND prt.used = FALSE AND prt.expires_at > NOW()
     """)
     token_data = db.execute(query, {"token": request.token}).fetchone()
 
     if not token_data:
-        raise HTTPException(status_code=400, detail="Token inválido")
+        raise HTTPException(status_code=400, detail="Token inválido, expirado ou já utilizado")
 
     user_id, expires_at, used, email = token_data
 
-    # Verificar se token já foi usado
-    if used:
-        raise HTTPException(status_code=400, detail="Token já foi utilizado")
-
-    # Verificar se token expirou
-    if datetime.now() > expires_at:
-        raise HTTPException(status_code=400, detail="Token expirado")
-
-    # Validar nova senha (mínimo 8 caracteres)
+    # Validar nova senha
     if len(request.new_password) < 8:
         raise HTTPException(status_code=400, detail="A senha deve ter pelo menos 8 caracteres")
 
-    try:
-        # Atualizar senha do usuário (usando MD5 por simplicidade - em produção usar bcrypt)
-        import hashlib
-        hashed_password = hashlib.md5(request.new_password.encode()).hexdigest()
+    # Verificar se senha contém caracteres especiais
+    if not any(char.isdigit() for char in request.new_password):
+        raise HTTPException(status_code=400, detail="A senha deve conter pelo menos um número")
 
+    try:
+        # Gerar hash seguro da senha usando bcrypt
+        hashed_password = get_password_hash(request.new_password)
+
+        # Atualizar senha do usuário
         db.execute(text("""
             UPDATE usuarios
-            SET senha = :senha
+            SET senha = :senha, updated_at = NOW()
             WHERE id = :user_id
         """), {
             "senha": hashed_password,
@@ -152,7 +167,7 @@ def reset_password(
         # Marcar token como usado
         db.execute(text("""
             UPDATE password_reset_tokens
-            SET used = TRUE
+            SET used = TRUE, updated_at = NOW()
             WHERE token = :token
         """), {"token": request.token})
 
@@ -165,25 +180,40 @@ def reset_password(
     return {"message": "Senha atualizada com sucesso"}
 
 @router.get("/verify-reset-token/{token}")
-def verify_reset_token(token: str, db: Session = Depends(get_db)):
+async def verify_reset_token(token: str, db: Session = Depends(get_db)):
     """Verificar se um token de reset é válido (para frontend)"""
+
+    if not token or len(token) < 10:
+        raise HTTPException(status_code=400, detail="Token inválido")
 
     query = text("""
         SELECT prt.expires_at, prt.used
         FROM password_reset_tokens prt
-        WHERE prt.token = :token
+        WHERE prt.token = :token AND prt.used = FALSE AND prt.expires_at > NOW()
+        LIMIT 1
     """)
     token_data = db.execute(query, {"token": token}).fetchone()
 
     if not token_data:
-        raise HTTPException(status_code=400, detail="Token inválido")
-
-    expires_at, used = token_data
-
-    if used:
-        raise HTTPException(status_code=400, detail="Token já foi utilizado")
-
-    if datetime.now() > expires_at:
-        raise HTTPException(status_code=400, detail="Token expirado")
+        raise HTTPException(status_code=400, detail="Token inválido, expirado ou já utilizado")
 
     return {"valid": True, "message": "Token válido"}
+
+
+@router.delete("/cleanup-expired-tokens")
+async def cleanup_expired_tokens(db: Session = Depends(get_db)):
+    """Limpar tokens expirados (manutenção) - deve ser chamado periodicamente"""
+    try:
+        result = db.execute(text("""
+            DELETE FROM password_reset_tokens
+            WHERE expires_at < NOW() OR (used = TRUE AND created_at < DATE_SUB(NOW(), INTERVAL 7 DAY))
+        """))
+
+        deleted_count = result.rowcount
+        db.commit()
+
+        return {"message": f"{deleted_count} tokens expirados removidos com sucesso"}
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Erro ao limpar tokens expirados")

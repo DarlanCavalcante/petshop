@@ -38,7 +38,7 @@ export default function LoginPage() {
           router.push('/dashboard'); // <-- 4. CORRIGIDO: Uso de router.push
         }
       }, 500);
-    } catch (err: any) {
+    } catch (err) {
       if (err instanceof APIError) {
         toast.error(err.message);
       } else {

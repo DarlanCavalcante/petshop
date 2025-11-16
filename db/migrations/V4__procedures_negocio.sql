@@ -1,8 +1,8 @@
 -- V4: Procedures de negócio (registrar venda e agendar serviço)
-USE petshop;
 
-DELIMITER $$
-DROP PROCEDURE IF EXISTS registrar_venda$$
+
+
+DROP PROCEDURE IF EXISTS registrar_venda
 CREATE PROCEDURE registrar_venda(
     IN p_id_cliente INT,
     IN p_id_funcionario INT,
@@ -55,9 +55,9 @@ BEGIN
     SET p_valor_final = v_total - p_desconto;
 
     COMMIT;
-END$$
+END
 
-DROP PROCEDURE IF EXISTS agendar_servico$$
+DROP PROCEDURE IF EXISTS agendar_servico
 CREATE PROCEDURE agendar_servico(
     IN p_id_pet INT,
     IN p_id_servico INT,
@@ -85,7 +85,8 @@ BEGIN
     VALUES(p_data_hora, 'Agendado', p_id_servico, p_id_pet, p_id_funcionario, p_observacoes, NULL, p_duracao_estimada);
 
     SET p_id_agendamento = LAST_INSERT_ID();
-END$$
+END
 DELIMITER ;
 
 SELECT 'V4 procedures de negocio aplicadas' AS status;
+

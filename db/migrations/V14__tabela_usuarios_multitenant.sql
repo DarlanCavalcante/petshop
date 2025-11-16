@@ -1,25 +1,28 @@
 -- V14__tabela_usuarios_multitenant.sql
--- Cria tabela usuarios para autentica√ß√£o multi-tenant
+-- Cria tabela usuarios para autenticaÁ„o multi-tenant
 
-CREATE TABLE IF NOT EXISTS usuarios (
+CREATE TABLE usuarios (
     id INT PRIMARY KEY AUTO_INCREMENT,
     nome VARCHAR(100) NOT NULL,
     email VARCHAR(255) NOT NULL UNIQUE,
     senha VARCHAR(255) NOT NULL,
     empresa_id INT NOT NULL DEFAULT 1,
-    is_admin BOOLEAN NOT NULL DEFAULT FALSE,
-    ativo BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    is_admin TINYINT(1) NOT NULL DEFAULT 0,
+    ativo TINYINT(1) NOT NULL DEFAULT 1,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
     deleted_at TIMESTAMP NULL,
 
     INDEX idx_usuarios_email (email),
     INDEX idx_usuarios_empresa (empresa_id),
     INDEX idx_usuarios_ativo (ativo)
-    -- FOREIGN KEY (empresa_id) REFERENCES empresas(id) -- Removido pois tabela empresas n√£o existe
+    -- FOREIGN KEY (empresa_id) REFERENCES empresas(id) -- Removido pois tabela empresas n„o existe
 );
 
--- Inserir usu√°rio admin padr√£o se n√£o existir
-INSERT IGNORE INTO usuarios (nome, email, senha, empresa_id, is_admin, ativo)
-VALUES ('Super Admin', 'admin@petshop.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj6fMhZaP1G', 1, TRUE, TRUE);
+-- Inserir usu·rio admin padr„o se n„o existir
+IF NOT EXISTS (SELECT 1 FROM usuarios WHERE email = 'admin@petshop.com')
+BEGIN
+    INSERT INTO usuarios (nome, email, senha, empresa_id, is_admin, ativo)
+    VALUES ('Super Admin', 'admin@petshop.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj6fMhZaP1G', 1, 1, 1);
+END
 -- Senha: admin123

@@ -8,12 +8,19 @@ import { useState, useEffect, useCallback } from 'react';
 import apiClient from '@/lib/apiClient';
 import { toast } from 'react-hot-toast';
 
+import { Agendamento, Cliente, Pet, Servico, Pacote } from '@/lib/types';
+
+interface PacoteCliente extends Pacote {
+  id_cliente_pacote: number;
+  servicos?: Servico[];
+}
+
 export function useAgendamentosData() {
-  const [lista, setLista] = useState<any[]>([]);
-  const [clientes, setClientes] = useState<any[]>([]);
-  const [pets, setPets] = useState<any[]>([]);
-  const [servicos, setServicos] = useState<any[]>([]);
-  const [pacotesCliente, setPacotesCliente] = useState<any[]>([]);
+  const [lista, setLista] = useState<Agendamento[]>([]);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [pets, setPets] = useState<Pet[]>([]);
+  const [servicos, setServicos] = useState<Servico[]>([]);
+  const [pacotesCliente, setPacotesCliente] = useState<PacoteCliente[]>([]);
   const [idClientePacote, setIdClientePacote] = useState<number | null>(null);
   const [idCliente, setIdCliente] = useState<number | null>(null);
   const [idPet, setIdPet] = useState<number | null>(null);
@@ -29,7 +36,26 @@ export function useAgendamentosData() {
   const [selecionado, setSelecionado] = useState<string>(`${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-${String(hoje.getDate()).padStart(2,'0')}`);
   const [contagens, setContagens] = useState<Record<string, number>>({});
 
-  useEffect(() => { loadData(); }, []);
+  const fetchContagens = useCallback(async (ano: number, mes: number) => {
+    try {
+      const res = await apiClient.get(`/agendamentos/calendario?ano=${ano}&mes=${mes}`);
+      const data = res.data;
+      const map: Record<string, number> = {};
+      for (const row of data) {
+        const d = new Date(row.dia);
+        const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        map[key] = row.total;
+      }
+      setContagens(map);
+    } catch {}
+  }, []);
+
+  const loadAgendamentosPorData = useCallback(async (data: string) => {
+    try {
+      const res = await apiClient.get(`/agendamentos?data=${data}`);
+      setLista(Array.isArray(res.data) ? res.data : []);
+    } catch {}
+  }, []);
 
   const loadData = useCallback(async () => {
     try {
@@ -52,28 +78,11 @@ export function useAgendamentosData() {
       toast.error('Erro ao carregar dados');
       setLoading(false);
     }
-  }, [calAno, calMes, selecionado]);
+  }, [calAno, calMes, selecionado, fetchContagens, loadAgendamentosPorData]);
 
-  const fetchContagens = useCallback(async (ano: number, mes: number) => {
-    try {
-      const res = await apiClient.get(`/agendamentos/calendario?ano=${ano}&mes=${mes}`);
-      const data = res.data;
-      const map: Record<string, number> = {};
-      for (const row of data) {
-        const d = new Date(row.dia);
-        const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-        map[key] = row.total;
-      }
-      setContagens(map);
-    } catch {}
-  }, []);
-
-  const loadAgendamentosPorData = useCallback(async (data: string) => {
-    try {
-      const res = await apiClient.get(`/agendamentos?data=${data}`);
-      setLista(Array.isArray(res.data) ? res.data : []);
-    } catch {}
-  }, []);
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   // Função para selecionar cliente e carregar pets/pacotes
   function onClienteChange(id: number | null) {

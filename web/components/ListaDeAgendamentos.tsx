@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Calendar, Briefcase, PawPrint, Clock, CheckCircle, XCircle } from "lucide-react";
 
 export default function ListaDeAgendamentos() {
-  const { lista, formatSelecionado, selecionado } = useAgendamentosData();
+  const { lista, formatSelecionado } = useAgendamentosData();
 
   return (
     <motion.div
@@ -62,7 +62,7 @@ export default function ListaDeAgendamentos() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Clock className="w-4 h-4" />
-                      <span>{new Date(a.data_hora).toLocaleString('pt-BR')}</span>
+                      <span>{a.data_hora ? new Date(a.data_hora).toLocaleString('pt-BR') : 'Data não definida'}</span>
                       {a.duracao_estimada && <span>· {a.duracao_estimada}min</span>}
                     </div>
                   </div>

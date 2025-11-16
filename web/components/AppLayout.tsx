@@ -37,14 +37,12 @@ const menuItems = [
 
 export default function AppLayout({ children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [empresa, setEmpresa] = useState<string>('');
+  const [empresa, setEmpresa] = useState<string | null>(null);
   const pathname = usePathname();
 
   useEffect(() => {
-    // Carregar empresa do localStorage apenas no cliente
-    if (typeof window !== 'undefined') {
-      setEmpresa(localStorage.getItem('empresa') || 'N/A');
-    }
+    const empresaFromStorage = sessionStorage.getItem('empresa');
+    setEmpresa(empresaFromStorage);
   }, []);
 
   const handleLogout = () => {

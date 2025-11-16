@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Building2, Users, Calendar, CheckCircle, XCircle, Eye, Power, PowerOff } from 'lucide-react';
+import { Building2, Users, CheckCircle, XCircle, Eye, PowerOff } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import AppLayout from '@/components/AppLayout';
 import { api } from '@/lib/api';
@@ -39,9 +39,9 @@ export default function AdminEmpresasPage() {
 
   const loadEmpresas = async () => {
     try {
-      const data = await api.get('/empresas');
-      setEmpresas(data);
-    } catch (error: any) {
+      const response = await api.get('/empresas') as { data: Empresa[] };
+      setEmpresas(response.data || []);
+    } catch {
       toast.error('Erro ao carregar empresas');
     } finally {
       setLoading(false);
@@ -62,7 +62,7 @@ export default function AdminEmpresasPage() {
       }
 
       loadEmpresas();
-    } catch (error: any) {
+    } catch {
       toast.error(`Erro ao ${empresa.ativo ? 'desativar' : 'ativar'} empresa`);
     }
   };

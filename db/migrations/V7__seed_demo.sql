@@ -1,5 +1,5 @@
 -- V7: Seed de dados mínimos para demonstração e testes
-USE petshop;
+
 
 -- Clientes (se vazio)
 INSERT INTO clientes (nome, cpf, telefone, email, endereco_cidade, endereco_estado)
@@ -50,3 +50,4 @@ SELECT 'Rex', 'Cão', 'SRD', @id_cliente
 WHERE NOT EXISTS (SELECT 1 FROM pets LIMIT 1);
 
 SELECT 'V7 seed demo aplicada' AS status;
+

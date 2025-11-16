@@ -48,35 +48,6 @@ Execute `./scripts/ssh-tunnel-setup.sh` para ver instruções detalhadas.
 
 ---
 
-## Adminer - Administração Web do Banco
-
-Para facilitar a administração do banco de dados durante o desenvolvimento, incluímos o **Adminer**, uma interface web leve e segura para MySQL/MariaDB.
-
-### Acesso ao Adminer
-- **URL:** http://localhost:8080
-- **Sistema:** MySQL
-- **Servidor:** petshop-mariadb
-- **Usuário:** root (para administração completa) ou petshopuser (para operações normais)
-- **Senha:** Conforme arquivo `.env` (MYSQL_ROOT_PASSWORD ou MYSQL_APP_PASSWORD)
-- **Base de dados:** petshop_empresa_teste (ou qualquer base criada)
-
-### Funcionalidades
-- ✅ Visualizar tabelas e dados
-- ✅ Executar queries SQL
-- ✅ Gerenciar usuários e permissões
-- ✅ Importar/exportar dados
-- ✅ Ver estrutura de tabelas, índices e constraints
-- ✅ Monitorar performance e processos
-
-### Credenciais de Acesso
-Para desenvolvimento local:
-- **Root (Admin):** Usuário `root`, senha definida em `MYSQL_ROOT_PASSWORD`
-- **Aplicação:** Usuário `petshopuser`, senha definida em `MYSQL_APP_PASSWORD`
-
-**⚠️ Segurança:** Use apenas em desenvolvimento. Em produção, considere ferramentas como phpMyAdmin ou DBeaver com VPN.
-
----
-
 ## Petshop DB
 
 Infraestrutura de banco MySQL 8.4 com migrações Flyway, procedures de negócio, views de privacidade, backups automatizados e teste E2E.

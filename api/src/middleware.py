@@ -84,20 +84,54 @@ class IPWhitelistMiddleware(BaseHTTPMiddleware):
     Middleware para whitelist de IPs (opcional)
     Útil para endpoints administrativos
     """
-    
+
     def __init__(self, app, allowed_ips: list = None):
         super().__init__(app)
-        self.allowed_ips = allowed_ips or []
+        self.allowed_ips = set(allowed_ips or [])  # Usa set para lookup O(1)
         self.enabled = len(self.allowed_ips) > 0
-    
+        self._ip_cache = {}  # Cache simples para IPs verificados
+        self._cache_ttl = 300  # 5 minutos
+
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         if not self.enabled:
             return await call_next(request)
-        
+
         # Pega IP do cliente
         client_ip = request.client.host
-        
+
+        # Verifica cache primeiro
+        current_time = time.time()
+        if client_ip in self._ip_cache:
+            cached_result, cache_time = self._ip_cache[client_ip]
+            if current_time - cache_time < self._cache_ttl:
+                if not cached_result:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="IP não autorizado"
+                    )
+                return await call_next(request)
+
         # Verifica whitelist
+        allowed = client_ip in self.allowed_ips
+
+        # Atualiza cache
+        self._ip_cache[client_ip] = (allowed, current_time)
+
+        if not allowed:
+            logger.warning(
+                f"IP bloqueado tentou acessar: {client_ip}",
+                extra={
+                    "ip": client_ip,
+                    "path": request.url.path,
+                    "event_type": "ip_blocked"
+                }
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="IP não autorizado"
+            )
+
+        return await call_next(request)
         if client_ip not in self.allowed_ips:
             log_security_event(
                 logger=logger,

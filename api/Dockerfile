@@ -19,5 +19,5 @@ COPY . .
 # Expõe porta da API
 EXPOSE 4000
 
-# Comando para rodar a API
+# Comando para rodar a API (HTTP para compatibilidade com tunnel)
 CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "4000"]

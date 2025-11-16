@@ -1,24 +1,26 @@
-export default function Page() {
-  // ...todo o conteúdo do arquivo original, incluindo hooks, funções e JSX...
-}
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Plus, ShoppingCart, Trash2, User, Package, DollarSign, X, UserPlus, PackagePlus } from 'lucide-react';
+import { Search, Plus, ShoppingCart, Trash2, User, Package, DollarSign, UserPlus, PackagePlus } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import AppLayout from '@/components/AppLayout';
 import { useSalesData } from '@/lib/useSalesData';
 
+interface CartItem {
+  id_produto: number;
+  qtd: number;
+  preco: number;
+}
 
-
-
+export default function Page() {
   const {
     produtos, clientes, selectedCliente, setSelectedCliente, itens, setItens, desconto, setDesconto, idFuncionario,
     searchCliente, setSearchCliente, searchProduto, setSearchProduto,
-    showClienteModal, setShowClienteModal, showProdutoModal, setShowProdutoModal,
+    showClienteModal, setShowClienteModal,
     showNovoClienteModal, setShowNovoClienteModal, novoCliente, setNovoCliente,
     filteredClientes, filteredProdutos, total, valorFinal,
-    addItem, updateQtd, updatePreco, removeItem, handleCreateCliente
+    addItem, updateQtd, updatePreco, removeItem, handleCreateCliente, loadData
   } = useSalesData();
 
   // submitVenda permanece local pois depende de API_URL e lógica de reset local
@@ -41,7 +43,7 @@ import { useSalesData } from '@/lib/useSalesData';
       const payload = {
         id_cliente: selectedCliente.id_cliente,
         id_funcionario: idFuncionario,
-        itens: itens.map((i: any) => ({ id_produto: i.id_produto, qtd: i.qtd, preco: i.preco })),
+        itens: itens.map((i) => ({ id_produto: i.id_produto, qtd: i.qtd, preco: i.preco })),
         desconto: desconto || 0
       };
       const response = await fetch(`/api/vendas`, {
@@ -58,62 +60,25 @@ import { useSalesData } from '@/lib/useSalesData';
         throw new Error(error);
       }
       const data = await response.json();
- 
-        export default function Page() {
-          const {
-            produtos, clientes, selectedCliente, setSelectedCliente, itens, setItens, desconto, setDesconto, idFuncionario,
-            searchCliente, setSearchCliente, searchProduto, setSearchProduto,
-            showClienteModal, setShowClienteModal, showProdutoModal, setShowProdutoModal,
-            showNovoClienteModal, setShowNovoClienteModal, novoCliente, setNovoCliente,
-            filteredClientes, filteredProdutos, total, valorFinal,
-            addItem, updateQtd, updatePreco, removeItem, handleCreateCliente
-          } = useSalesData();
+      alert(`Venda #${data.id_venda} registrada! Total: R$ ${data.valor_final.toFixed(2)}`);
+      setItens([]);
+      setDesconto(0);
+      setSelectedCliente(null);
+    } catch (error) {
+      alert((error as Error).message || 'Erro ao registrar venda');
+    }
+  };
 
-          // submitVenda permanece local pois depende de API_URL e lógica de reset local
-          const submitVenda = async () => {
-            try {
-              const token = sessionStorage.getItem('token');
-              const empresa = sessionStorage.getItem('empresa') || 'teste';
-              if (!selectedCliente) {
-                alert('Selecione um cliente');
-                return;
-              }
-              if (!idFuncionario) {
-                alert('Funcionário não identificado');
-                return;
-              }
-              if (itens.length === 0) {
-                alert('Adicione pelo menos um produto');
-                return;
-              }
-              const payload = {
-                id_cliente: selectedCliente.id_cliente,
-                id_funcionario: idFuncionario,
-                itens: itens.map((i: any) => ({ id_produto: i.id_produto, qtd: i.qtd, preco: i.preco })),
-                desconto: desconto || 0
-              };
-              const response = await fetch(`/api/vendas`, {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'X-Empresa': empresa,
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload)
-              });
-              if (!response.ok) {
-                const error = await response.text();
-                throw new Error(error);
-              }
-              const data = await response.json();
-              alert(`Venda #${data.id_venda} registrada! Total: R$ ${data.valor_final.toFixed(2)}`);
-              setItens([]);
-              setDesconto(0);
-              setSelectedCliente(null);
-            } catch (error: any) {
-              alert(error.message || 'Erro ao registrar venda');
-            }
-          };
+  const handleSubmitCliente = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const clienteData = {
+      ...novoCliente,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      ativo: true
+    };
+    await handleCreateCliente(clienteData);
+  };
 
           return (
             <AppLayout>
@@ -130,37 +95,84 @@ import { useSalesData } from '@/lib/useSalesData';
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   {/* Cliente */}
-                  <span className="text-gray-600 dark:text-gray-400">Subtotal:</span>
-                  <span className="font-semibold">R$ {total.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-gray-600 dark:text-gray-400">Desconto:</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    max={total}
-                    value={desconto}
-                    onChange={(e) => setDesconto(parseFloat(e.target.value) || 0)}
-                    className="w-28 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-lg text-right"
-                  />
-                </div>
-                <div className="flex justify-between text-lg font-bold border-t border-gray-200 dark:border-gray-700 pt-2">
-                  <span>Total:</span>
-                  <span className="text-green-600">R$ {valorFinal.toFixed(2)}</span>
-                </div>
-              </div>
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="lg:col-span-1 space-y-4"
+                  >
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                          <User className="w-5 h-5" />
+                          Cliente
+                        </h2>
+                        <button
+                          onClick={() => setShowClienteModal(true)}
+                          className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
+                          title="Selecionar Cliente"
+                        >
+                          <UserPlus className="w-5 h-5" />
+                        </button>
+                      </div>
 
-              <button
-                onClick={submitVenda}
-                disabled={!selectedCliente || itens.length === 0}
-                className="w-full py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl font-medium hover:from-green-700 hover:to-emerald-700 shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                <ShoppingCart className="w-5 h-5" />
-                Finalizar Venda
-              </button>
-            </div>
-          </motion.div>
+                      {selectedCliente ? (
+                        <div className="space-y-2">
+                          <p className="font-semibold text-gray-900 dark:text-white">{selectedCliente.nome}</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">{selectedCliente.telefone}</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">{selectedCliente.email}</p>
+                        </div>
+                      ) : (
+                        <p className="text-gray-500">Nenhum cliente selecionado</p>
+                      )}
+                    </div>
+                  </motion.div>
+
+                  {/* Resumo da Venda */}
+                  <motion.div
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="lg:col-span-2 space-y-4"
+                  >
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
+                      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                        <DollarSign className="w-5 h-5" />
+                        Resumo da Venda
+                      </h2>
+
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-gray-600 dark:text-gray-400">Subtotal:</span>
+                          <span className="font-semibold">R$ {total.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-gray-600 dark:text-gray-400">Desconto:</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            max={total}
+                            value={desconto}
+                            onChange={(e) => setDesconto(parseFloat(e.target.value) || 0)}
+                            className="w-28 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-lg text-right"
+                          />
+                        </div>
+                        <div className="flex justify-between text-lg font-bold border-t border-gray-200 dark:border-gray-700 pt-2">
+                          <span>Total:</span>
+                          <span className="text-green-600">R$ {valorFinal.toFixed(2)}</span>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={submitVenda}
+                        disabled={!selectedCliente || itens.length === 0}
+                        className="w-full mt-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl font-medium hover:from-green-700 hover:to-emerald-700 shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      >
+                        <ShoppingCart className="w-5 h-5" />
+                        Finalizar Venda
+                      </button>
+                    </div>
+                  </motion.div>
+                </div>
 
           {/* Produtos e Carrinho */}
           <motion.div
@@ -173,7 +185,7 @@ import { useSalesData } from '@/lib/useSalesData';
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                   <Package className="w-5 h-5" />
-                  Produtos ({produtos.filter(p => p.estoque_total > 0).length})
+                  Produtos ({produtos.filter(p => p.estoque > 0).length})
                 </h2>
                 <button
                   onClick={() => window.location.href = '/produtos'}
@@ -211,7 +223,7 @@ import { useSalesData } from '@/lib/useSalesData';
                       <div className="flex-1">
                         <p className="font-semibold text-gray-900 dark:text-white">{produto.nome}</p>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                          R$ {Number(produto.preco_venda).toFixed(2)} · Estoque: {produto.estoque_total}
+                          R$ {Number(produto.preco).toFixed(2)} · Estoque: {produto.estoque}
                         </p>
                       </div>
                       <button
@@ -285,7 +297,6 @@ import { useSalesData } from '@/lib/useSalesData';
             </div>
           </motion.div>
         </div>
-      </div>
 
       {/* Modal Selecionar Cliente */}
       <AnimatePresence>
@@ -403,7 +414,7 @@ import { useSalesData } from '@/lib/useSalesData';
                 Cadastro Rápido de Cliente
               </h2>
               
-              <form onSubmit={handleCreateCliente} className="space-y-4">
+              <form onSubmit={handleSubmitCliente} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Nome Completo *

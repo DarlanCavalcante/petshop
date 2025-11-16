@@ -1,9 +1,9 @@
 -- V11: Constraints avançados para integridade referencial e regras de negócio
-USE petshop;
+
 
 -- Trigger: impede deletar produtos que já foram vendidos
-DELIMITER $$
-DROP TRIGGER IF EXISTS produtos_before_delete$$
+
+DROP TRIGGER IF EXISTS produtos_before_delete
 CREATE TRIGGER produtos_before_delete
 BEFORE DELETE ON produtos
 FOR EACH ROW
@@ -12,14 +12,14 @@ BEGIN
     SELECT COUNT(*) INTO v_vendas FROM itens_da_venda WHERE id_produto = OLD.id_produto;
     IF v_vendas > 0 THEN
         SIGNAL SQLSTATE '45000' 
-        SET MESSAGE_TEXT = 'Não é possível deletar produto com vendas registradas. Use soft delete (ativo=FALSE).';
+        SET MESSAGE_TEXT = 'Não é possível deletar produto com vendas registradas. Use soft delete (ativo=0).';
     END IF;
-END$$
+END
 DELIMITER ;
 
 -- Trigger: impede deletar clientes com vendas ou pets ativos
-DELIMITER $$
-DROP TRIGGER IF EXISTS clientes_before_delete$$
+
+DROP TRIGGER IF EXISTS clientes_before_delete
 CREATE TRIGGER clientes_before_delete
 BEFORE DELETE ON clientes
 FOR EACH ROW
@@ -27,17 +27,17 @@ BEGIN
     DECLARE v_vendas INT;
     DECLARE v_pets INT;
     SELECT COUNT(*) INTO v_vendas FROM vendas WHERE id_cliente = OLD.id_cliente;
-    SELECT COUNT(*) INTO v_pets FROM pets WHERE id_cliente = OLD.id_cliente AND ativo = TRUE;
+    SELECT COUNT(*) INTO v_pets FROM pets WHERE id_cliente = OLD.id_cliente AND ativo = 1;
     IF v_vendas > 0 OR v_pets > 0 THEN
         SIGNAL SQLSTATE '45000' 
-        SET MESSAGE_TEXT = 'Não é possível deletar cliente com vendas ou pets ativos. Use soft delete (ativo=FALSE).';
+        SET MESSAGE_TEXT = 'Não é possível deletar cliente com vendas ou pets ativos. Use soft delete (ativo=0).';
     END IF;
-END$$
+END
 DELIMITER ;
 
 -- Trigger: valida data da venda (não pode ser futura)
-DELIMITER $$
-DROP TRIGGER IF EXISTS vendas_before_insert$$
+
+DROP TRIGGER IF EXISTS vendas_before_insert
 CREATE TRIGGER vendas_before_insert
 BEFORE INSERT ON vendas
 FOR EACH ROW
@@ -51,12 +51,12 @@ BEGIN
         SIGNAL SQLSTATE '45000' 
         SET MESSAGE_TEXT = 'Desconto não pode exceder o valor total da venda';
     END IF;
-END$$
+END
 DELIMITER ;
 
 -- Trigger: valida atualização de venda
-DELIMITER $$
-DROP TRIGGER IF EXISTS vendas_before_update$$
+
+DROP TRIGGER IF EXISTS vendas_before_update
 CREATE TRIGGER vendas_before_update
 BEFORE UPDATE ON vendas
 FOR EACH ROW
@@ -69,12 +69,12 @@ BEGIN
         SIGNAL SQLSTATE '45000' 
         SET MESSAGE_TEXT = 'Desconto não pode exceder o valor total da venda';
     END IF;
-END$$
+END
 DELIMITER ;
 
 -- Trigger: valida data de agendamento (deve ser futura ou hoje)
-DELIMITER $$
-DROP TRIGGER IF EXISTS agendamentos_before_insert$$
+
+DROP TRIGGER IF EXISTS agendamentos_before_insert
 CREATE TRIGGER agendamentos_before_insert
 BEFORE INSERT ON agendamentos
 FOR EACH ROW
@@ -83,7 +83,7 @@ BEGIN
         SIGNAL SQLSTATE '45000' 
         SET MESSAGE_TEXT = 'Data de agendamento não pode ser no passado';
     END IF;
-END$$
+END
 DELIMITER ;
 
 -- Constraint: produtos com estoque vencido devem ser sinalizados
@@ -106,3 +106,4 @@ WHERE e.data_vencimento IS NOT NULL
 ORDER BY e.data_vencimento ASC;
 
 SELECT 'V11 constraints avançados aplicados' AS status;
+

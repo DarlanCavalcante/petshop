@@ -8,7 +8,7 @@ dredentials-file: /etc/cloudflared/SEU_ARQUIVO_CREDENCIAL.json
 
 ingress:
   - hostname: api.petshop.tech10cloud.com
-    service: https://petshop-api:4000
+    service: http://petshop-api:4000
   - hostname: petshop.tech10cloud.com
     service: http://petshop-frontend:3000
   - service: http_status:404

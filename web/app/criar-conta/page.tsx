@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Building2, Mail, Phone, MapPin, User, Lock, CheckCircle } from 'lucide-react';
+import { Building2, User, CheckCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
@@ -74,8 +74,9 @@ export default function CriarContaPage() {
         router.push('/conta-pendente');
       }, 3000);
 
-    } catch (error: any) {
-      toast.error(error.message || 'Erro ao criar conta. Tente novamente.');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Erro ao criar conta. Tente novamente.';
+      toast.error(message);
     } finally {
       setLoading(false);
     }

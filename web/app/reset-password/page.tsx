@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import { PawPrint, Lock, Eye, EyeOff, ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
@@ -8,7 +8,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { API_URL } from '@/lib/config';
 
-export default function ResetPasswordPage() {
+function ResetPasswordContent() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -21,15 +21,7 @@ export default function ResetPasswordPage() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
 
-  useEffect(() => {
-    if (token) {
-      verifyToken();
-    } else {
-      setTokenValid(false);
-    }
-  }, [token]);
-
-  const verifyToken = async () => {
+  const verifyToken = useCallback(async () => {
     try {
       const response = await fetch(`${API_URL}/auth/verify-reset-token/${token}`);
       if (response.ok) {
@@ -37,10 +29,18 @@ export default function ResetPasswordPage() {
       } else {
         setTokenValid(false);
       }
-    } catch (error) {
+    } catch {
       setTokenValid(false);
     }
-  };
+  }, [token]);
+
+  useEffect(() => {
+    if (token) {
+      verifyToken();
+    } else {
+      setTokenValid(false);
+    }
+  }, [token, verifyToken]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,7 +80,7 @@ export default function ResetPasswordPage() {
       } else {
         toast.error(data.detail || 'Erro ao redefinir senha');
       }
-    } catch (error) {
+    } catch {
       toast.error('Erro de conexão. Tente novamente.');
     } finally {
       setLoading(false);
@@ -347,5 +347,13 @@ export default function ResetPasswordPage() {
         </motion.div>
       </div>
     </>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<div>Carregando...</div>}>
+      <ResetPasswordContent />
+    </Suspense>
   );
 }

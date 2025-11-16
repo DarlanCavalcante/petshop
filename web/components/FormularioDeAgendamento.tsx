@@ -12,7 +12,7 @@ export default function FormularioDeAgendamento() {
   const {
     clientes, pets, servicos, pacotesCliente,
     idClientePacote, setIdClientePacote, idCliente, idPet, idServico, idFuncionario,
-    setIdCliente, setIdPet, setIdServico, setIdFuncionario,
+    setIdCliente, setIdPet, setIdServico,
     dataHora, setDataHora, duracao, setDuracao, obs, setObs,
     onClienteChange, onServicoChange, loadData, setPets
   } = useAgendamentosData();

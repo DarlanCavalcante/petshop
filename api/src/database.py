@@ -93,11 +93,18 @@ def update_databases_map(empresa_code: str, db_url: str):
 
 
 def _get_engine(db_url: str):
+    """Cria engine otimizada para MySQL/MariaDB"""
     return create_engine(
         db_url,
-        pool_pre_ping=True,
-        pool_recycle=3600,
-        echo=settings.debug
+        pool_pre_ping=True,  # Verifica conexão antes de usar
+        pool_recycle=3600,  # Recicla conexões a cada hora
+        pool_size=10,       # Pool de 10 conexões
+        max_overflow=20,    # Máximo 20 conexões extras
+        echo=settings.debug,
+        connect_args={
+            "charset": "utf8mb4",
+            "autocommit": False
+        }
     )
 
 
@@ -152,6 +159,18 @@ def get_db(request: Request):
         yield db
     finally:
         db.close()
+
+
+async def get_db_async(request: Request):
+    """Versão async da dependency get_db para rotas async"""
+    empresa_code = _extract_empresa_from_request(request)
+    engine = get_engine_for_empresa(empresa_code)
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        await db.close()  # Para SQLAlchemy 2.0+
 
 
 def get_db_by_empresa(empresa_code: str = "teste"):

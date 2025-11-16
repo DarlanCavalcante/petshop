@@ -23,9 +23,9 @@ export default function AdminAprovacoesPage() {
   const fetchPendingCompanies = async () => {
     setLoading(true);
     try {
-      const data = await api.get("/api/admin/pending-companies");
-      setPendingCompanies(data);
-    } catch (error: any) {
+      const response = await api.get("/api/admin/pending-companies") as { data: PendingCompany[] };
+      setPendingCompanies(response.data || []);
+    } catch {
       toast.error("Erro ao buscar empresas pendentes");
     } finally {
       setLoading(false);
@@ -37,7 +37,7 @@ export default function AdminAprovacoesPage() {
       await api.post(`/api/admin/approve-company/${id}`);
       toast.success("Empresa aprovada com sucesso!");
       fetchPendingCompanies();
-    } catch (error: any) {
+    } catch {
       toast.error("Erro ao aprovar empresa");
     }
   };
@@ -47,7 +47,7 @@ export default function AdminAprovacoesPage() {
       await api.post(`/api/admin/reject-company/${id}`);
       toast.success("Empresa rejeitada com sucesso!");
       fetchPendingCompanies();
-    } catch (error: any) {
+    } catch {
       toast.error("Erro ao rejeitar empresa");
     }
   };

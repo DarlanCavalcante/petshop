@@ -1,5 +1,5 @@
 -- V2: Índices e constraints práticos para performance e qualidade de dados
-USE petshop;
+
 
 -- Substitui índice não-único por único em produtos.codigo_barras (permite múltiplos NULLs)
 ALTER TABLE produtos 
@@ -12,14 +12,14 @@ ALTER TABLE pets
 
 -- Compostos úteis para relatórios e telas
 ALTER TABLE vendas 
-  ADD INDEX idx_vendas_cliente_data (id_cliente, data_hora_venda);
+  CREATE INDEX idx_vendas_cliente_data  ON id_cliente, data_hora_venda;
 
 ALTER TABLE estoque 
-  ADD INDEX idx_estoque_produto_vencimento (id_produto, data_vencimento);
+  CREATE INDEX idx_estoque_produto_vencimento  ON id_produto, data_vencimento;
 
 ALTER TABLE agendamentos 
-  ADD INDEX idx_agenda_func_data (id_funcionario, data_hora),
-  ADD INDEX idx_agenda_pet_data (id_pet, data_hora);
+  CREATE INDEX idx_agenda_func_data  ON id_funcionario, data_hora,
+  CREATE INDEX idx_agenda_pet_data  ON id_pet, data_hora;
 
 -- Checks adicionais de qualidade de dados
 ALTER TABLE pets 
@@ -32,3 +32,4 @@ ALTER TABLE vendas
   ADD CONSTRAINT chk_vendas_valor_desconto_total CHECK (valor_desconto <= valor_total);
 
 SELECT 'V2 indices e constraints aplicados' AS status;
+

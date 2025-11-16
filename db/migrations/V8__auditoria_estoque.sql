@@ -1,8 +1,7 @@
--- V8: Auditoria de movimentações de estoque
-USE petshop;
+-- V8: Auditoria de movimenta��es de estoque
 
--- Tabela de log de movimentações
-CREATE TABLE IF NOT EXISTS estoque_movimentacoes (
+-- Tabela de log de movimenta��es
+CREATE TABLE estoque_movimentacoes (
     id_movimentacao INT NOT NULL AUTO_INCREMENT,
     id_produto INT NOT NULL,
     id_estoque INT NULL,
@@ -14,21 +13,21 @@ CREATE TABLE IF NOT EXISTS estoque_movimentacoes (
     motivo VARCHAR(100) NULL,
     id_venda INT NULL,
     id_funcionario INT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW(),
     PRIMARY KEY (id_movimentacao),
-    KEY idx_produto (id_produto),
-    KEY idx_estoque (id_estoque),
-    KEY idx_tipo (tipo),
-    KEY idx_created (created_at),
+    INDEX idx_produto (id_produto),
+    INDEX idx_estoque (id_estoque),
+    INDEX idx_tipo (tipo),
+    INDEX idx_created (created_at),
     CONSTRAINT fk_mov_produto FOREIGN KEY (id_produto) REFERENCES produtos (id_produto) ON DELETE CASCADE,
     CONSTRAINT fk_mov_estoque FOREIGN KEY (id_estoque) REFERENCES estoque (id_estoque) ON DELETE SET NULL,
     CONSTRAINT fk_mov_venda FOREIGN KEY (id_venda) REFERENCES vendas (id_venda) ON DELETE SET NULL,
     CONSTRAINT fk_mov_funcionario FOREIGN KEY (id_funcionario) REFERENCES funcionarios (id_funcionario) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+);
 
--- View de resumo de movimentações
-CREATE OR REPLACE VIEW vw_estoque_movimentacoes AS
-SELECT 
+-- View de resumo de movimenta��es
+CREATE VIEW vw_estoque_movimentacoes AS
+SELECT
     m.id_movimentacao,
     m.tipo,
     p.nome as produto_nome,
@@ -46,9 +45,9 @@ JOIN produtos p ON m.id_produto = p.id_produto
 LEFT JOIN funcionarios f ON m.id_funcionario = f.id_funcionario
 ORDER BY m.created_at DESC;
 
--- Atualiza registrar_venda para logar movimentações
-DELIMITER $$
-DROP PROCEDURE IF EXISTS registrar_venda$$
+-- Atualiza registrar_venda para logar movimenta��es
+
+DROP PROCEDURE IF EXISTS registrar_venda
 CREATE PROCEDURE registrar_venda(
     IN p_id_cliente INT,
     IN p_id_funcionario INT,
@@ -135,7 +134,8 @@ BEGIN
     SET p_valor_final = v_total - p_desconto;
 
     COMMIT;
-END$$
+END
 DELIMITER ;
 
 SELECT 'V8 auditoria de estoque aplicada' AS status;
+

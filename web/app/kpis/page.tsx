@@ -1,6 +1,7 @@
 "use client";
 import { useKpisData } from '@/lib/useKpisData';
 
+export default function KPIsPage() {
   const { vendasPorFuncionario, produtosMaisVendidos, receitaDiaria, loading, error } = useKpisData();
 
   return (

@@ -7,7 +7,7 @@ from fastapi.security import OAuth2PasswordBearer
 from src.config import get_settings
 
 settings = get_settings()
-pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
+pwd_context = CryptContext(schemes=["bcrypt", "pbkdf2_sha256"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -30,10 +30,33 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     encoded_jwt = jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
     return encoded_jwt
 
+from functools import lru_cache
+import time
+
+# Cache simples para tokens decodificados (TTL 5 minutos)
+_token_cache = {}
+
 def decode_access_token(token: str):
-    """Decodifica e valida token JWT"""
+    """Decodifica e valida token JWT com cache"""
+    current_time = time.time()
+
+    # Verifica cache
+    if token in _token_cache:
+        cached_payload, cache_time = _token_cache[token]
+        if current_time - cache_time < 300:  # 5 minutos
+            return cached_payload
+
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+
+        # Verifica expiração
+        exp = payload.get("exp")
+        if exp and current_time > exp:
+            return None
+
+        # Cache o payload válido
+        _token_cache[token] = (payload, current_time)
+
         return payload
     except JWTError:
         return None

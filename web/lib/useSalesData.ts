@@ -11,15 +11,24 @@
  *   addItem, updateQtd, updatePreco, removeItem, handleCreateCliente, setSelectedCliente
  * }
  */
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import apiClient from '@/lib/apiClient';
 import { toast } from 'react-hot-toast';
 
+import { Produto, Cliente, VendaItem } from '@/lib/types';
+
+interface CartItem {
+  id_produto: number;
+  nome: string;
+  qtd: number;
+  preco: number;
+}
+
 export function useSalesData() {
-  const [produtos, setProdutos] = useState<any[]>([]);
-  const [clientes, setClientes] = useState<any[]>([]);
-  const [selectedCliente, setSelectedCliente] = useState<any>(null);
-  const [itens, setItens] = useState<any[]>([]);
+  const [produtos, setProdutos] = useState<Produto[]>([]);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
+  const [itens, setItens] = useState<CartItem[]>([]);
   const [desconto, setDesconto] = useState<number>(0);
   const [idFuncionario, setIdFuncionario] = useState<number | null>(null);
   const [searchCliente, setSearchCliente] = useState('');
@@ -29,9 +38,7 @@ export function useSalesData() {
   const [showNovoClienteModal, setShowNovoClienteModal] = useState(false);
   const [novoCliente, setNovoCliente] = useState({ nome: '', cpf: '', telefone: '', email: '' });
 
-  useEffect(() => { loadData(); }, []);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       try {
         const meRes = await apiClient.get('/auth/me');
@@ -46,29 +53,33 @@ export function useSalesData() {
         setClientes(Array.isArray(clientesRes.data) ? clientesRes.data : []);
       } catch {}
     } catch {}
-  };
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const filteredClientes = useMemo(() =>
-    clientes.filter((c: any) => c.nome.toLowerCase().includes(searchCliente.toLowerCase())),
+    clientes.filter((c) => c.nome.toLowerCase().includes(searchCliente.toLowerCase())),
     [clientes, searchCliente]
   );
 
   const filteredProdutos = useMemo(() =>
-    produtos.filter((p: any) => p.nome.toLowerCase().includes(searchProduto.toLowerCase()) && p.estoque_total > 0),
+    produtos.filter((p) => p.nome.toLowerCase().includes(searchProduto.toLowerCase()) && p.estoque > 0),
     [produtos, searchProduto]
   );
 
   const total = useMemo(() => itens.reduce((acc, item) => acc + item.qtd * item.preco, 0), [itens]);
   const valorFinal = Math.max(total - desconto, 0);
 
-  const addItem = (produto: any) => {
-    const existing = itens.find((i: any) => i.id_produto === produto.id_produto);
+  const addItem = (produto: Produto) => {
+    const existing = itens.find((i) => i.id_produto === produto.id_produto);
     if (existing) {
-      if (existing.qtd + 1 > produto.estoque_total) {
+      if (existing.qtd + 1 > produto.estoque) {
         toast.error('Estoque insuficiente');
         return;
       }
-      setItens(itens.map((i: any) =>
+      setItens(itens.map((i) =>
         i.id_produto === produto.id_produto
           ? { ...i, qtd: i.qtd + 1 }
           : i
@@ -78,35 +89,35 @@ export function useSalesData() {
         id_produto: produto.id_produto,
         nome: produto.nome,
         qtd: 1,
-        preco: Number(produto.preco_venda)
+        preco: Number(produto.preco)
       }]);
     }
     toast.success(`${produto.nome} adicionado`);
   };
 
   const updateQtd = (id_produto: number, qtd: number) => {
-    const produto = produtos.find((p: any) => p.id_produto === id_produto);
-    if (produto && qtd > produto.estoque_total) {
+    const produto = produtos.find((p) => p.id_produto === id_produto);
+    if (produto && qtd > produto.estoque) {
       toast.error('Quantidade maior que estoque');
       return;
     }
-    setItens(itens.map((i: any) =>
+    setItens(itens.map((i) =>
       i.id_produto === id_produto ? { ...i, qtd: Math.max(1, qtd) } : i
     ));
   };
 
   const updatePreco = (id_produto: number, preco: number) => {
-    setItens(itens.map((i: any) =>
+    setItens(itens.map((i) =>
       i.id_produto === id_produto ? { ...i, preco: Math.max(0, preco) } : i
     ));
   };
 
   const removeItem = (id_produto: number) => {
-    setItens(itens.filter((i: any) => i.id_produto !== id_produto));
+    setItens(itens.filter((i) => i.id_produto !== id_produto));
     toast.success('Item removido');
   };
 
-  const handleCreateCliente = async (novoCliente: any) => {
+  const handleCreateCliente = async (novoCliente: Omit<Cliente, 'id_cliente'>) => {
     try {
       const token = sessionStorage.getItem('token');
       const empresa = sessionStorage.getItem('empresa') || 'teste';
@@ -120,7 +131,7 @@ export function useSalesData() {
       toast.success('Cliente criado!');
       setShowNovoClienteModal(false);
       loadData();
-    } catch (error: any) {
+    } catch (error) {
       toast.error('Erro ao criar cliente');
     }
   };
@@ -131,6 +142,6 @@ export function useSalesData() {
     showClienteModal, setShowClienteModal, showProdutoModal, setShowProdutoModal,
     showNovoClienteModal, setShowNovoClienteModal, novoCliente, setNovoCliente,
     filteredClientes, filteredProdutos, total, valorFinal,
-    addItem, updateQtd, updatePreco, removeItem, handleCreateCliente
+    addItem, updateQtd, updatePreco, removeItem, handleCreateCliente, loadData
   };
 }

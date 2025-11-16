@@ -3,12 +3,13 @@
  */
 
 import { API_URL } from './config';
+import { Cliente, Produto, Venda } from './types';
 
 export class APIError extends Error {
   constructor(
     public status: number,
     message: string,
-    public details?: any
+    public details?: unknown
   ) {
     super(message);
     this.name = 'APIError';
@@ -63,9 +64,9 @@ class APIClient {
       });
       clearTimeout(id);
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       clearTimeout(id);
-      if (error.name === 'AbortError') {
+      if (error instanceof Error && error.name === 'AbortError') {
         throw new APIError(408, 'Requisição excedeu o tempo limite');
       }
       throw error;
@@ -147,8 +148,8 @@ class APIClient {
       try {
         const response = await this.fetchWithTimeout(url, fetchOptions, timeout);
         return await this.handleResponse<T>(response);
-      } catch (error: any) {
-        lastError = error;
+      } catch (error: unknown) {
+        lastError = error instanceof Error ? error : new Error(String(error));
 
         // Não faz retry para erros 4xx (exceto 429)
         if (error instanceof APIError) {
@@ -210,7 +211,7 @@ class APIClient {
    */
   async post<T>(
     endpoint: string,
-    data?: any,
+    data?: unknown,
     options?: RequestOptions
   ): Promise<T> {
     return this.request<T>(endpoint, {
@@ -225,7 +226,7 @@ class APIClient {
    */
   async put<T>(
     endpoint: string,
-    data?: any,
+    data?: unknown,
     options?: RequestOptions
   ): Promise<T> {
     return this.request<T>(endpoint, {
@@ -240,7 +241,7 @@ class APIClient {
    */
   async patch<T>(
     endpoint: string,
-    data?: any,
+    data?: unknown,
     options?: RequestOptions
   ): Promise<T> {
     return this.request<T>(endpoint, {
@@ -341,25 +342,25 @@ export const authAPI = {
 };
 
 export const clientesAPI = {
-  list: () => api.get('/clientes'),
-  get: (id: number) => api.get(`/clientes/${id}`),
-  create: (data: any) => api.post('/clientes', data),
-  update: (id: number, data: any) => api.put(`/clientes/${id}`, data),
-  delete: (id: number) => api.delete(`/clientes/${id}`),
+  list: () => api.get<Cliente[]>('/clientes'),
+  get: (id: number) => api.get<Cliente>(`/clientes/${id}`),
+  create: (data: Partial<Cliente>) => api.post<Cliente>('/clientes', data),
+  update: (id: number, data: Partial<Cliente>) => api.put<Cliente>(`/clientes/${id}`, data),
+  delete: (id: number) => api.delete<void>(`/clientes/${id}`),
 };
 
 export const produtosAPI = {
-  list: () => api.get('/produtos'),
-  get: (id: number) => api.get(`/produtos/${id}`),
-  create: (data: any) => api.post('/produtos', data),
-  update: (id: number, data: any) => api.put(`/produtos/${id}`, data),
+  list: () => api.get<Produto[]>('/produtos'),
+  get: (id: number) => api.get<Produto>(`/produtos/${id}`),
+  create: (data: Partial<Produto>) => api.post<Produto>('/produtos', data),
+  update: (id: number, data: Partial<Produto>) => api.put<Produto>(`/produtos/${id}`, data),
 };
 
 export const vendasAPI = {
-  list: (skip?: number, limit?: number) => 
-    api.get(`/vendas?skip=${skip || 0}&limit=${limit || 50}`),
-  get: (id: number) => api.get(`/vendas/${id}`),
-  create: (data: any) => api.post('/vendas', data, { retry: 0 }), // Não retenta vendas
+  list: (skip?: number, limit?: number) =>
+    api.get<Venda[]>(`/vendas?skip=${skip || 0}&limit=${limit || 50}`),
+  get: (id: number) => api.get<Venda>(`/vendas/${id}`),
+  create: (data: Partial<Venda>) => api.post<Venda>('/vendas', data, { retry: 0 }), // Não retenta vendas
 };
 
 export const kpisAPI = {

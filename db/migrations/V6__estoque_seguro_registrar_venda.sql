@@ -1,8 +1,8 @@
 -- V6: Reforço de integridade no registrar_venda (checagem de estoque e rollback em erro)
-USE petshop;
 
-DELIMITER $$
-DROP PROCEDURE IF EXISTS registrar_venda$$
+
+
+DROP PROCEDURE IF EXISTS registrar_venda
 CREATE PROCEDURE registrar_venda(
     IN p_id_cliente INT,
     IN p_id_funcionario INT,
@@ -75,7 +75,8 @@ BEGIN
     SET p_valor_final = v_total - p_desconto;
 
     COMMIT;
-END$$
+END
 DELIMITER ;
 
 SELECT 'V6 registrar_venda com estoque seguro aplicado' AS status;
+

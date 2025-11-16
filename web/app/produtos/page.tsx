@@ -56,8 +56,8 @@ export default function ProdutosPage() {
       
       const data = await response.json();
       setProdutos(data);
-    } catch (error: any) {
-      toast.error(error.message || 'Erro ao carregar produtos');
+    } catch (error) {
+      toast.error((error as Error)?.message || 'Erro ao carregar produtos');
     } finally {
       setLoading(false);
     }
@@ -83,7 +83,7 @@ export default function ProdutosPage() {
     setShowModal(true);
   };
 
-  const handleEditProduto = (produto: Produto) => {
+  const handleEditProduto = () => {
     toast('Funcionalidade de edição em desenvolvimento', {
       icon: 'ℹ️',
     });
@@ -98,15 +98,12 @@ export default function ProdutosPage() {
     if (!selectedProduto) return;
     
     try {
-      const token = sessionStorage.getItem('token');
-      const empresa = sessionStorage.getItem('empresa') || 'teste';
-      
       // Aqui você pode adicionar endpoint de delete quando estiver pronto
       toast.success(`Produto ${selectedProduto.nome} removido!`);
       setShowDeleteConfirm(false);
       setSelectedProduto(null);
       loadProdutos();
-    } catch (error: any) {
+    } catch {
       toast.error('Erro ao remover produto');
     }
   };
@@ -117,7 +114,12 @@ export default function ProdutosPage() {
     try {
       const token = sessionStorage.getItem('token');
       const empresa = sessionStorage.getItem('empresa') || 'teste';
-      
+
+      if (!token) {
+        toast.error('Token de autenticação não encontrado');
+        return;
+      }
+
       const produtoData = {
         nome: newProdutoForm.nome,
         codigo_barras: newProdutoForm.codigo_barras,
@@ -150,8 +152,8 @@ export default function ProdutosPage() {
         estoque_total: ''
       });
       loadProdutos();
-    } catch (error: any) {
-      toast.error(error.message || 'Erro ao cadastrar produto');
+    } catch (error) {
+      toast.error((error as Error)?.message || 'Erro ao cadastrar produto');
     }
   };
 
@@ -327,7 +329,7 @@ export default function ProdutosPage() {
                       <motion.button
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
-                        onClick={() => handleEditProduto(produto)}
+                        onClick={() => handleEditProduto()}
                         className="p-2 bg-green-100 text-green-600 rounded-lg hover:bg-green-200 transition-colors"
                       >
                         <Edit className="w-4 h-4" />

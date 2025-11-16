@@ -33,7 +33,7 @@ export default function ForgotPasswordPage() {
       } else {
         toast.error(data.detail || 'Erro ao enviar e-mail');
       }
-    } catch (error) {
+    } catch {
       toast.error('Erro de conexão. Tente novamente.');
     } finally {
       setLoading(false);

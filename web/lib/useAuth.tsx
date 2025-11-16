@@ -17,22 +17,31 @@ import { toast } from 'react-hot-toast';
  *   - forceLogoutAndNotify: (msg) => void (logout forçado com notificação)
  */
 export function useAuth() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [token, setToken] = useState<string | null>(null);
-  const [empresa, setEmpresa] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
-  // Checa autenticação ao montar
-  useEffect(() => {
-    const t = sessionStorage.getItem('token');
-    const e = sessionStorage.getItem('empresa');
-    setToken(t);
-    setEmpresa(e);
-    setIsAuthenticated(!!t);
-    setIsLoading(false);
-  }, []);
+  // Estado inicial baseado no sessionStorage
+  const [token, setToken] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('token');
+    }
+    return null;
+  });
+
+  const [empresa, setEmpresa] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('empresa');
+    }
+    return null;
+  });
+
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return !!sessionStorage.getItem('token');
+    }
+    return false;
+  });
+
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   /**
    * Realiza login, salva token/empresa e autentica usuário.
@@ -66,7 +75,6 @@ export function useAuth() {
    */
   const forceLogoutAndNotify = useCallback((msg: string) => {
     logout();
-    setFeedback(msg);
     toast.error(msg);
   }, [logout]);
 
@@ -79,12 +87,12 @@ export function useAuth() {
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
       if (payload.exp && Date.now() / 1000 > payload.exp) {
-        logout('Sessão expirada. Faça login novamente.');
+        logout();
         return false;
       }
       return true;
     } catch {
-      logout('Sessão inválida. Faça login novamente.');
+      logout();
       return false;
     }
   }, [token, logout]);
@@ -94,7 +102,7 @@ export function useAuth() {
     if (token) checkTokenValidity();
   }, [token, checkTokenValidity]);
 
-  return { isAuthenticated, token, empresa, login, logout, feedback, isLoading, forceLogoutAndNotify };
+  return { isAuthenticated, token, empresa, login, logout, isLoading, forceLogoutAndNotify };
 }
 
 // Componente de rota protegida
@@ -109,15 +117,14 @@ import { ReactNode } from 'react';
  * @returns {JSX.Element|null} Conteúdo se autenticado, senão null
  */
 export function ProtectedRoute({ children }: { children: ReactNode }) {
-  const { isAuthenticated, feedback } = useAuth();
+  const { isAuthenticated } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
     if (!isAuthenticated) {
-      if (feedback) toast.error(feedback);
       router.push('/login');
     }
-  }, [isAuthenticated, feedback, router]);
+  }, [isAuthenticated, router]);
 
   if (!isAuthenticated) {
     return null;

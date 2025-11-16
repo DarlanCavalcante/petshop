@@ -1,5 +1,5 @@
 -- V3: Views privadas para mascarar dados sensíveis (PII)
-USE petshop;
+
 
 -- View de clientes com CPF e email mascarados
 CREATE OR REPLACE VIEW vw_clientes_privado AS
@@ -22,8 +22,8 @@ SELECT
     c.created_at AS cliente_desde,
     COUNT(p.id_pet) AS total_pets
 FROM clientes c
-LEFT JOIN pets p ON c.id_cliente = p.id_cliente AND p.deleted_at IS NULL AND p.ativo = TRUE
-WHERE c.deleted_at IS NULL AND c.ativo = TRUE
+LEFT JOIN pets p ON c.id_cliente = p.id_cliente AND p.deleted_at IS NULL AND p.ativo = 1
+WHERE c.deleted_at IS NULL AND c.ativo = 1
 GROUP BY c.id_cliente;
 
 -- View de pets reduzida sem histórico médico sensível
@@ -41,7 +41,7 @@ SELECT
     p.created_at AS cadastrado_em
 FROM pets p
 JOIN clientes c ON p.id_cliente = c.id_cliente
-WHERE p.deleted_at IS NULL AND p.ativo = TRUE;
+WHERE p.deleted_at IS NULL AND p.ativo = 1;
 
 -- View de vendas anonimizada (não lista cliente completo)
 CREATE OR REPLACE VIEW vw_vendas_anon AS
@@ -82,3 +82,4 @@ WHERE DATE(a.data_hora) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
 ORDER BY a.data_hora DESC;
 
 SELECT 'V3 views privadas aplicadas' AS status;
+
