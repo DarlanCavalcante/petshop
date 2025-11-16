@@ -58,3 +58,11 @@ backup_*/
 api/backup_*/
 backup_completo_*.zip
 backup_completo_*/
+
+# Large files and binaries
+flyway.zip
+flyway/
+*.zip
+*.tar.gz
+*.7z
+*.jar
