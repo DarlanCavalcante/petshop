@@ -28,6 +28,9 @@ services:
       - "4000:4000"
     depends_on:
       - mariadb
+    volumes:
+      - ./api/.env:/app/.env
+      - ./api/databases.json:/app/databases.json
 
   frontend:
     build:
@@ -39,18 +42,9 @@ services:
     depends_on:
       - api
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:4000
+      NEXT_PUBLIC_API_URL: https://api.petshop.tech10cloud.com
     volumes:
       - ./web/public/assets:/app/public/assets
-
-  adminer:
-    image: adminer:latest
-    container_name: petshop-adminer
-    restart: always
-    ports:
-      - "8080:8080"
-    depends_on:
-      - mariadb
 
   tunnel:
     image: cloudflare/cloudflared:latest
