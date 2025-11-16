@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 
 from src.config import get_settings
 from src.database import get_engine_for_empresa
-from src.routes import auth, clientes, vendas, agendamentos, kpis, produtos, servicos, pacotes, empresas
+from src.routes import auth, clientes, vendas, agendamentos, kpis, produtos, servicos, pacotes, empresas, password_reset
 from src.logger import setup_logger, mask_sensitive_data
 from src.middleware import (
     SecurityHeadersMiddleware,
@@ -77,6 +77,7 @@ app.add_middleware(
 
 # Rotas
 app.include_router(auth.router)
+app.include_router(password_reset.router)
 app.include_router(clientes.router)
 app.include_router(vendas.router)
 app.include_router(agendamentos.router)

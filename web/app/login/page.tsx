@@ -12,6 +12,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [empresa, setEmpresa] = useState('teste');
   const [loading, setLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const router = useRouter(); // <-- 2. Inicialização do Hook Adicionada
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -21,10 +22,11 @@ export default function LoginPage() {
     try {
       const data = await authAPI.login(username, password, empresa);
       
-      // Usar sessionStorage (mais seguro que localStorage)
-      // Dados são apagados ao fechar o navegador
-      sessionStorage.setItem('token', data.access_token);
-      sessionStorage.setItem('empresa', empresa);
+      // Escolher storage baseado na opção "Lembrar-me"
+      const storage = rememberMe ? localStorage : sessionStorage;
+      
+      storage.setItem('token', data.access_token);
+      storage.setItem('empresa', empresa);
       
       toast.success('Login realizado com sucesso!');
       setTimeout(() => {
@@ -204,6 +206,60 @@ export default function LoginPage() {
                 )}
               </motion.button>
             </form>
+
+            {/* Additional Options */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.7 }}
+              className="space-y-4"
+            >
+              {/* Remember Me & Forgot Password */}
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                  />
+                  Lembrar-me
+                </label>
+                <button
+                  type="button"
+                  onClick={() => router.push('/forgot-password')}
+                  className="text-sm text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                >
+                  Esqueci minha senha?
+                </button>
+              </div>
+
+              {/* Create Account Link */}
+              <div className="text-center">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Não tem uma conta?{' '}
+                  <a
+                    href="/criar-conta"
+                    className="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors"
+                  >
+                    Criar conta empresarial
+                  </a>
+                </p>
+              </div>
+
+              {/* Support Link */}
+              <div className="text-center">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Precisa de ajuda?{' '}
+                  <a
+                    href="mailto:suporte@petshop.tech10cloud.com"
+                    className="text-gray-600 hover:text-gray-500 dark:text-gray-400 dark:hover:text-gray-300 transition-colors"
+                  >
+                    Contate o suporte
+                  </a>
+                </p>
+              </div>
+            </motion.div>
 
             {/* Demo Credentials */}
             <motion.div

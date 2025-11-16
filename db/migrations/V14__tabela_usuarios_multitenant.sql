@@ -15,8 +15,8 @@ CREATE TABLE IF NOT EXISTS usuarios (
 
     INDEX idx_usuarios_email (email),
     INDEX idx_usuarios_empresa (empresa_id),
-    INDEX idx_usuarios_ativo (ativo),
-    FOREIGN KEY (empresa_id) REFERENCES empresas(id)
+    INDEX idx_usuarios_ativo (ativo)
+    -- FOREIGN KEY (empresa_id) REFERENCES empresas(id) -- Removido pois tabela empresas não existe
 );
 
 -- Inserir usuário admin padrão se não existir

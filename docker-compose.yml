@@ -39,22 +39,20 @@ services:
     depends_on:
       - api
     environment:
-      NEXT_PUBLIC_API_URL: http://api:4000
+      NEXT_PUBLIC_API_URL: http://localhost:4000
     volumes:
       - ./web/public/assets:/app/public/assets
 
   tunnel:
-    image: wernight/ngrok
-    container_name: petshop-tunnel
+    image: cloudflare/cloudflared:latest
+    container_name: tunnel_docker
     restart: always
-    environment:
-      NGROK_AUTHTOKEN: SEU_NGROK_TOKEN
-      NGROK_PORT: "3000"
+    command: tunnel --no-autoupdate run --token eyJhIjoiNjY1ZjI2NWVmYmUwNWE0YzU2MDNhZDJkZWM1ODQyYTMiLCJ0IjoiMzRkMDI0OWUtZjEyNi00MzFiLWFhNjEtZTg5NjI4MjQwYjI3IiwicyI6Ill6a3hOV0prWVdJdE0yVmtNUzAwTVdNekxUZ3dZV1V0TVRsbVlqazVZakV4TlRBNSJ9
     depends_on:
+      - api
       - frontend
-    ports:
-      - "4040:4040" # Painel do ngrok
-      - "80:80"     # Exemplo de exposição
+    networks:
+      - default
 
 volumes:
   mariadb_data:

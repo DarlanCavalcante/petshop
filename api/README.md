@@ -1,3 +1,23 @@
+# Configuração de E-mail (FastAPI-Mail)
+
+Para envio seguro de e-mails, utilize variáveis de ambiente no arquivo `.env`:
+
+```
+MAIL_USERNAME=seu_email@gmail.com
+MAIL_PASSWORD=sua_senha_app
+MAIL_FROM=seu_email@gmail.com
+MAIL_PORT=587
+MAIL_SERVER=smtp.gmail.com
+MAIL_TLS=True
+MAIL_SSL=False
+```
+
+**Recomendações:**
+- Use senha de app do Gmail e ative 2FA na conta.
+- Nunca versionar `.env` com dados sensíveis.
+- `VALIDATE_CERTS=True` já está ativado para produção.
+
+O backend já está pronto para uso seguro dessas variáveis.
 # Petshop API
 
 API REST construída com FastAPI para gestão completa do petshop, integrada ao banco MySQL (schema version 11).
