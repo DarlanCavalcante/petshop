@@ -48,6 +48,10 @@ services:
     container_name: tunnel_docker
     restart: always
     command: tunnel --no-autoupdate run --token eyJhIjoiNjY1ZjI2NWVmYmUwNWE0YzU2MDNhZDJkZWM1ODQyYTMiLCJ0IjoiMzRkMDI0OWUtZjEyNi00MzFiLWFhNjEtZTg5NjI4MjQwYjI3IiwicyI6Ill6a3hOV0prWVdJdE0yVmtNUzAwTVdNekxUZ3dZV1V0TVRsbVlqazVZakV4TlRBNSJ9
+    environment:
+      TUNNEL_ORIGIN_CERT: /etc/cloudflared/origin.crt
+    volumes:
+      - ./api/certs/origin.crt:/etc/cloudflared/origin.crt:ro
     depends_on:
       - api
       - frontend
