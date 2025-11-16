@@ -364,3 +364,75 @@ ANTES:                          DEPOIS:
 **Implementado em:** 09/11/2025  
 **Tempo de execução:** < 1 segundo  
 **Sucesso:** 100% ✅
+
+---
+
+## 🔧 CORREÇÕES RECENTES APLICADAS (16/11/2025)
+
+### Problemas Resolvidos:
+
+#### 1️⃣ **Erro 500 na API - Coluna Faltante**
+**Problema:** A API retornava erro 500 ao acessar `/servicos` devido à coluna `duracao_padrao` ausente na tabela `servicos`.
+
+**Solução aplicada:**
+```sql
+ALTER TABLE servicos ADD COLUMN duracao_padrao INT NULL;
+```
+**Status:** ✅ **RESOLVIDO** - API funcionando normalmente
+
+#### 2️⃣ **CORS Policy Blocking External Access**
+**Problema:** XMLHttpRequest bloqueado ao acessar frontend externamente via Cloudflare Tunnel.
+
+**Solução aplicada:**
+- ✅ Configurada URL da API para HTTPS: `https://api.petshop.tech10cloud.com`
+- ✅ Frontend agora usa `NEXT_PUBLIC_API_URL=https://api.petshop.tech10cloud.com`
+- ✅ CORS middleware permite origem externa `https://petshop.tech10cloud.com`
+
+**Status:** ✅ **RESOLVIDO** - Acesso externo funcionando
+
+#### 3️⃣ **Configuração Multi-Tenant**
+**Melhorias implementadas:**
+- ✅ Sistema de troca automática de banco por empresa
+- ✅ Middleware de autenticação aprimorado
+- ✅ Rotas de KPIs com filtros por empresa
+- ✅ Sistema de redefinição de senha implementado
+- ✅ Validações de segurança reforçadas
+
+**Status:** ✅ **IMPLEMENTADO** - Multi-empresa funcionando
+
+#### 4️⃣ **Versionamento e Deploy**
+**Ações realizadas:**
+- ✅ Commit das correções no GitHub
+- ✅ Reconstrução dos containers Docker
+- ✅ Teste de funcionamento dos serviços
+- ✅ Documentação atualizada
+
+**Status:** ✅ **CONCLUÍDO** - Projeto versionado e deployado
+
+---
+
+## 📊 STATUS ATUAL DO SISTEMA
+
+| Componente | Status | Observações |
+|------------|--------|-------------|
+| **API Backend** | ✅ Online | Porta 4000, multi-tenant |
+| **Frontend Next.js** | ✅ Online | Porta 3000, HTTPS externo |
+| **Banco MariaDB** | ✅ Online | Porta 3306, schema atualizado |
+| **Cloudflare Tunnel** | ✅ Online | Acesso externo configurado |
+| **CORS Policy** | ✅ Configurado | Origens externas permitidas |
+| **GitHub** | ✅ Atualizado | Correções commitadas |
+
+---
+
+## 🎯 RESULTADO FINAL
+
+**Sistema completamente funcional para acesso externo!**
+
+- ✅ API responde corretamente sem erros 500
+- ✅ Frontend acessível via HTTPS público
+- ✅ CORS configurado para domínios externos
+- ✅ Banco de dados com schema completo
+- ✅ Multi-tenant implementado
+- ✅ Código versionado no GitHub
+
+**Pronto para uso em produção!** 🚀
