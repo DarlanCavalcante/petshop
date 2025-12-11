@@ -1,0 +1,65 @@
+version: '3.8'
+services:
+  mariadb:
+    image: mariadb:11.3
+    container_name: petshop-mariadb
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: petshop
+      MYSQL_USER: petshopuser
+      MYSQL_PASSWORD: ${MYSQL_APP_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+
+  api:
+    build:
+      context: ./api
+    container_name: petshop-api
+    restart: always
+    environment:
+      DB_HOST: mariadb
+      DB_USER: petshopuser
+      DB_PASSWORD: ${MYSQL_APP_PASSWORD}
+      DB_NAME: petshop
+    ports:
+      - "4000:4000"
+    depends_on:
+      - mariadb
+    volumes:
+      - ./api/.env:/app/.env
+      - ./api/databases.json:/app/databases.json
+
+  frontend:
+    build:
+      context: ./web
+    container_name: petshop-frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    environment:
+      NEXT_PUBLIC_API_URL: https://api.petshop.tech10cloud.com
+    volumes:
+      - ./web/public/assets:/app/public/assets
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: tunnel_docker
+    restart: always
+    command: tunnel --no-autoupdate run --token eyJhIjoiNjY1ZjI2NWVmYmUwNWE0YzU2MDNhZDJkZWM1ODQyYTMiLCJ0IjoiMzRkMDI0OWUtZjEyNi00MzFiLWFhNjEtZTg5NjI4MjQwYjI3IiwicyI6Ill6a3hOV0prWVdJdE0yVmtNUzAwTVdNekxUZ3dZV1V0TVRsbVlqazVZakV4TlRBNSJ9
+    environment:
+      TUNNEL_ORIGIN_CERT: /etc/cloudflared/origin.crt
+    volumes:
+      - ./api/certs/origin.crt:/etc/cloudflared/origin.crt:ro
+    depends_on:
+      - api
+      - frontend
+    networks:
+      - default
+
+volumes:
+  mariadb_data:

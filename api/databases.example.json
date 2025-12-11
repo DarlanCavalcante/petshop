@@ -1,0 +1,6 @@
+{
+  "default": "mysql+pymysql://root:34461011@localhost:3306/petshop",
+  "empresa_a": "mysql+pymysql://root:34461011@localhost:3306/petshop_empresa_a",
+  "empresa_b": "mysql+pymysql://root:34461011@localhost:3306/petshop_empresa_b",
+  "empresa_c": "mysql+pymysql://root:34461011@localhost:3306/petshop_empresa_c"
+}

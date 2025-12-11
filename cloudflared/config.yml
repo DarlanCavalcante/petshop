@@ -1,0 +1,14 @@
+
+# Configuração do Cloudflare Tunnel para petshop
+# Substitua SEU_ID_DO_TUNNEL e SEU_ARQUIVO_CREDENCIAL conforme painel Cloudflare
+origincert: ../api/certs/origin.crt
+
+tunnel: SEU_ID_DO_TUNNEL
+dredentials-file: /etc/cloudflared/SEU_ARQUIVO_CREDENCIAL.json
+
+ingress:
+  - hostname: api.petshop.tech10cloud.com
+    service: http://petshop-api:4000
+  - hostname: petshop.tech10cloud.com
+    service: http://petshop-frontend:3000
+  - service: http_status:404
